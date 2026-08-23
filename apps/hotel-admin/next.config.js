@@ -35,6 +35,27 @@ const nextConfig = {
   // own directory (npm workspace packages) — Next.js must be told to
   // transpile them rather than treat them as pre-built.
   transpilePackages: ['@roomlink/db', '@roomlink/ui'],
+  experimental: {
+    // sharp resolves its platform binary (@img/sharp-linux-x64) via a
+    // require() built from process.platform/process.arch at runtime, which
+    // @vercel/nft's build-time file tracer can't follow statically — it
+    // never gets bundled into the deployed function, producing "Could not
+    // load the sharp module using the linux-x64 runtime" in production even
+    // though sharp's own JS wrapper (sharp/lib/*.js) traces and loads fine.
+    // This is the documented fix for tracing gaps like this. It only
+    // applies to the Pages Router page graph in this Next.js version (App
+    // Router route handlers are silently skipped — see
+    // node_modules/next/dist/build/collect-build-traces.js), which is why
+    // the card-image route lives under src/pages/api rather than
+    // src/app/api like every other route: this key must match its page
+    // path exactly for the override to apply.
+    outputFileTracingIncludes: {
+      '/api/v1/hotel/qr-codes/code/[qrCodeId]/card-image': [
+        '../../node_modules/@img/sharp-linux-x64/**/*',
+        '../../node_modules/@img/sharp-libvips-linux-x64/**/*',
+      ],
+    },
+  },
 }
 
 module.exports = withPWA(nextConfig)

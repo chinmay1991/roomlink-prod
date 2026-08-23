@@ -12,7 +12,7 @@ export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [formError, setFormError] = useState<string | null>(
-    searchParams.get('error') === 'forbidden' ? 'Your account does not have Hotel Admin portal access.' : null
+    searchParams?.get('error') === 'forbidden' ? 'Your account does not have Hotel Admin portal access.' : null
   )
   const [submitting, setSubmitting] = useState(false)
   const submittingRef = useRef(false)
