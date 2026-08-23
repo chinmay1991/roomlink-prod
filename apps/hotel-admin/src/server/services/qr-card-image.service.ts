@@ -1,6 +1,10 @@
+import fs from 'fs/promises'
+import os from 'os'
+import path from 'path'
 import sharp from 'sharp'
 import QRCode from 'qrcode'
 import { QR_CARD_TEMPLATE_BASE64 } from '@/assets/qr-card-template.base64'
+import { PT_SERIF_BOLD_BASE64, PT_SANS_BOLD_BASE64 } from '@/assets/qr-card-fonts.base64'
 
 // Embedded directly as a base64 module constant rather than read from a
 // separate file at request time: on Vercel, neither process.cwd() (public/
@@ -13,6 +17,52 @@ import { QR_CARD_TEMPLATE_BASE64 } from '@/assets/qr-card-template.base64'
 const TEMPLATE_BUFFER = Buffer.from(QR_CARD_TEMPLATE_BASE64, 'base64')
 const TEMPLATE_WIDTH = 1024
 const TEMPLATE_HEIGHT = 1536
+
+/**
+ * Vercel's Node.js runtime (AWS Lambda under the hood) ships zero fonts —
+ * sharp's SVG renderer (librsvg, via Pango/fontconfig) silently omits any
+ * <text> it can't match a font for, with no error, so the hotel name/room
+ * number rendered locally (where the OS has Georgia/Arial) but vanished in
+ * production. Fix: bundle actual font files, write them to /tmp (the one
+ * writable directory in a Lambda), and point fontconfig at that directory
+ * explicitly via FONTCONFIG_FILE. Confirmed this works even set *after*
+ * sharp is already require()'d — fontconfig initializes lazily on first
+ * actual text render, not at module load.
+ *
+ * Memoized module-level promise: /tmp persists across warm invocations of
+ * the same Lambda instance, so this only needs to run once per cold start,
+ * not once per request.
+ */
+let fontsReadyPromise: Promise<void> | null = null
+
+function ensureFontsConfigured(): Promise<void> {
+  if (!fontsReadyPromise) {
+    fontsReadyPromise = (async () => {
+      const fontDir = path.join(os.tmpdir(), 'roomlink-qr-card-fonts')
+      await fs.mkdir(fontDir, { recursive: true })
+
+      const serifPath = path.join(fontDir, 'PTSerif-Bold.ttf')
+      const sansPath = path.join(fontDir, 'PTSans-Bold.ttf')
+      const confPath = path.join(fontDir, 'fonts.conf')
+
+      await Promise.all([
+        fs.writeFile(serifPath, Buffer.from(PT_SERIF_BOLD_BASE64, 'base64')),
+        fs.writeFile(sansPath, Buffer.from(PT_SANS_BOLD_BASE64, 'base64')),
+      ])
+
+      const fontsConf = `<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <dir>${fontDir}</dir>
+  <cachedir>${path.join(fontDir, 'cache')}</cachedir>
+</fontconfig>`
+      await fs.writeFile(confPath, fontsConf)
+
+      process.env.FONTCONFIG_FILE = confPath
+    })()
+  }
+  return fontsReadyPromise
+}
 
 /**
  * Pixel regions calibrated by sampling public/qr-card-template.png directly
@@ -36,13 +86,12 @@ const HOTEL_NAME_MIN_FONT_SIZE = 16
 const HOTEL_NAME_LETTER_SPACING_RATIO = 6 / 44
 const HOTEL_NAME_PADDING = 16
 
-// Empirically measured against this exact font stack/weight (rendered via
-// sharp/librsvg and measured pixel-by-pixel — see the calibration script in
-// the PR): glyphWidth ≈ 0.72 * fontSize for this bold serif uppercase font.
+// Empirically measured against PT Serif Bold (rendered via sharp/librsvg
+// and measured pixel-by-pixel): glyphWidth ≈ 0.66 * fontSize for this font.
 // librsvg (sharp's SVG renderer) does NOT implement textLength/lengthAdjust
 // — text silently overflows past it — so the font size has to be solved for
 // directly instead of relying on the SVG spec's auto-fit attributes.
-const GLYPH_WIDTH_RATIO = 0.72
+const GLYPH_WIDTH_RATIO = 0.66
 
 function renderedWidth(length: number, fontSize: number) {
   return length * fontSize * GLYPH_WIDTH_RATIO + Math.max(0, length - 1) * fontSize * HOTEL_NAME_LETTER_SPACING_RATIO
@@ -93,7 +142,7 @@ function overlaySvg(hotelName: string, roomNumber: string) {
     <text
       x="${nameCenterX}" y="${nameCenterY}"
       text-anchor="middle"
-      font-family="Georgia, 'Times New Roman', serif"
+      font-family="PT Serif, Georgia, serif"
       font-size="${fontSize}"
       font-weight="700"
       letter-spacing="${letterSpacing}"
@@ -104,7 +153,7 @@ function overlaySvg(hotelName: string, roomNumber: string) {
     <text
       x="${roomTextX}" y="${roomCenterY}"
       text-anchor="start"
-      font-family="Arial, Helvetica, sans-serif"
+      font-family="PT Sans, Arial, Helvetica, sans-serif"
       font-size="26"
       font-weight="700"
       fill="#0c0b09"
@@ -127,6 +176,8 @@ export async function generateRoomQrCardImage({
   roomNumber: string
   qrPayload: string
 }): Promise<Buffer> {
+  await ensureFontsConfigured()
+
   const qrPng = await QRCode.toBuffer(qrPayload, { type: 'png', width: QR_BOX.size * 2, margin: 1 })
   const qrResized = await sharp(qrPng).resize(QR_BOX.size, QR_BOX.size).toBuffer()
 
