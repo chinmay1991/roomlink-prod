@@ -80,7 +80,10 @@ export async function createHotel(input: CreateHotelInput, actorId: string): Pro
         email: input.adminEmail,
         phone: input.adminPhone || null,
         password_hash: passwordHash,
-        status: 'invited',
+        // 'invited' would block login in apps/hotel-admin (authorize() requires
+        // status === 'active') and V1 has no accept-invite flow to clear it —
+        // the temp password below *is* the activation step.
+        status: 'active',
       },
     })
 
@@ -121,11 +124,12 @@ export async function createHotel(input: CreateHotelInput, actorId: string): Pro
     return { hotelId: hotel.hotel_id, adminEmail: admin.email }
   })
 
+  const loginUrl = `${(process.env.HOTEL_ADMIN_APP_URL ?? 'http://localhost:3001').replace(/\/$/, '')}/login`
   await getNotificationProvider()
     .sendEmail(
       result.adminEmail,
       "You're invited to RoomLink",
-      `You've been made Hotel Admin for ${input.name}.\n\nSign in with:\nEmail: ${result.adminEmail}\nTemporary password: ${tempPassword}`
+      `You've been made Hotel Admin for ${input.name}.\n\nSign in at ${loginUrl} with:\nEmail: ${result.adminEmail}\nTemporary password: ${tempPassword}`
     )
     .catch((err) => console.error('Failed to send invite email:', err))
 

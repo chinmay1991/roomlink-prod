@@ -40,9 +40,9 @@ export function StepReview({ plans }: { plans: PlanOption[] }) {
       </div>
 
       <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
-        Creating this hotel will also create the Hotel Admin account, seed the 9-step onboarding tracker, and start a
-        trial subscription. Email delivery isn&apos;t wired up yet — you&apos;ll get the Hotel Admin&apos;s temporary
-        password on the next screen to share manually.
+        Creating this hotel will also create the Hotel Admin account, seed the 9-step onboarding tracker, start a
+        trial subscription, and email the Hotel Admin their login link and temporary password. You&apos;ll also see
+        the temporary password on the next screen in case you need to share it manually.
       </div>
     </div>
   )

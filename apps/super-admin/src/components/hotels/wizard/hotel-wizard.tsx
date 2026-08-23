@@ -74,7 +74,10 @@ export function HotelWizard({ plans }: { plans: PlanOption[] }) {
           <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500" aria-hidden />
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Hotel created</h2>
-            <p className="text-sm text-slate-500">Share these credentials with the Hotel Admin — email delivery isn&apos;t wired up yet.</p>
+            <p className="text-sm text-slate-500">
+              An invite email with these credentials was sent to the Hotel Admin. You can also share them manually
+              below.
+            </p>
           </div>
           <div className="rounded-md bg-slate-50 p-4 text-left text-sm">
             <p>

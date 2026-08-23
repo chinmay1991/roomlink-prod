@@ -63,8 +63,13 @@ export async function resetHotelAdminPassword(userId: string, actor: SessionUser
     entityId: userId,
   })
 
+  const loginUrl = `${(process.env.HOTEL_ADMIN_APP_URL ?? 'http://localhost:3001').replace(/\/$/, '')}/login`
   await getNotificationProvider()
-    .sendEmail(user.email, 'Your RoomLink password was reset', `Your new temporary password is: ${tempPassword}`)
+    .sendEmail(
+      user.email,
+      'Your RoomLink password was reset',
+      `Your new temporary password is: ${tempPassword}\n\nSign in at ${loginUrl}`
+    )
     .catch((err) => console.error('Failed to send password-reset email:', err))
 
   return tempPassword
@@ -72,7 +77,14 @@ export async function resetHotelAdminPassword(userId: string, actor: SessionUser
 
 export async function resendHotelAdminInvite(userId: string, actor: SessionUser) {
   const tempPassword = await resetHotelAdminPassword(userId, actor)
-  await prisma.users.update({ where: { user_id: userId }, data: { status: 'invited' } })
+  // 'active', not 'invited' — apps/hotel-admin's authorize() rejects any
+  // non-active status and V1 has no accept-invite flow to clear it. The
+  // temp password just emailed is the activation step. Skip the flip for a
+  // 'disabled' admin so this can't be used to bypass an explicit Disable.
+  await prisma.users.updateMany({
+    where: { user_id: userId, status: { not: 'disabled' } },
+    data: { status: 'active' },
+  })
 
   await recordAudit({
     actorId: actor.id,

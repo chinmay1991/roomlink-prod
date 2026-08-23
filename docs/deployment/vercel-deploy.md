@@ -114,8 +114,9 @@ Preview environments.
 | `DATABASE_URL` | Your Supabase connection string (see note on pooling below) |
 | `NEXTAUTH_URL` | `https://<your-super-admin-domain>` |
 | `NEXTAUTH_SECRET` | Generate with `openssl rand -base64 32` — **different from local**, keep secret |
-| `RESEND_API_KEY` | Optional — omit and invite/reset emails just log to the server console |
-| `RESEND_FROM_EMAIL` | Optional, pairs with the above |
+| `HOTEL_ADMIN_APP_URL` | `https://<your-hotel-admin-domain>` — linked from Hotel Admin invite/reset emails |
+| `RESEND_API_KEY` | **Not yet set up anywhere (local or prod) — TODO.** Until then, invite/reset emails just log to the server console instead of sending; new Hotel Admins get their temp password only via the wizard's on-screen success step. To wire it up: create a Resend account, verify a sending domain (DNS records at your registrar), generate an API key, and set it here. |
+| `RESEND_FROM_EMAIL` | **TODO, pairs with the above** — the verified sender address (e.g. `invites@yourdomain.com`) |
 
 ### `roomlink-hotel-admin`
 
