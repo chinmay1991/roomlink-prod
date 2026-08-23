@@ -1,9 +1,16 @@
-import fs from 'fs/promises'
-import path from 'path'
 import sharp from 'sharp'
 import QRCode from 'qrcode'
+import { QR_CARD_TEMPLATE_BASE64 } from '@/assets/qr-card-template.base64'
 
-const TEMPLATE_PATH = path.join(process.cwd(), 'public', 'qr-card-template.png')
+// Embedded directly as a base64 module constant rather than read from a
+// separate file at request time: on Vercel, neither process.cwd() (public/
+// is deployed to the static/CDN layer, not the function's own filesystem)
+// nor __dirname (webpack relocates this module into a shared server chunk,
+// so __dirname no longer points at the source tree) reliably resolve to the
+// asset at runtime — both were tried and both 404/ENOENT'd in a production
+// build. Baking the bytes into the compiled module sidesteps path
+// resolution entirely.
+const TEMPLATE_BUFFER = Buffer.from(QR_CARD_TEMPLATE_BASE64, 'base64')
 const TEMPLATE_WIDTH = 1024
 const TEMPLATE_HEIGHT = 1536
 
@@ -120,14 +127,10 @@ export async function generateRoomQrCardImage({
   roomNumber: string
   qrPayload: string
 }): Promise<Buffer> {
-  const [template, qrPng] = await Promise.all([
-    fs.readFile(TEMPLATE_PATH),
-    QRCode.toBuffer(qrPayload, { type: 'png', width: QR_BOX.size * 2, margin: 1 }),
-  ])
-
+  const qrPng = await QRCode.toBuffer(qrPayload, { type: 'png', width: QR_BOX.size * 2, margin: 1 })
   const qrResized = await sharp(qrPng).resize(QR_BOX.size, QR_BOX.size).toBuffer()
 
-  return sharp(template)
+  return sharp(TEMPLATE_BUFFER)
     .composite([
       { input: Buffer.from(overlaySvg(hotelName, roomNumber)), left: 0, top: 0 },
       { input: qrResized, left: QR_BOX.left, top: QR_BOX.top },
