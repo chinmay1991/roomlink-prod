@@ -23,10 +23,10 @@ export const setStaffDepartmentsSchema = z.object({
 })
 export type SetStaffDepartmentsInput = z.infer<typeof setStaffDepartmentsSchema>
 
-export const createReceptionSchema = z.object({
+export const createFrontOfficeStaffSchema = z.object({
   fullName: z.string().trim().min(2, 'Name is required').max(150),
   employeeId: z.string().trim().max(50).optional().or(z.literal('')),
   mobile: z.string().trim().max(20).optional().or(z.literal('')),
   email: z.string().trim().email('Enter a valid email'),
 })
-export type CreateReceptionInput = z.infer<typeof createReceptionSchema>
+export type CreateFrontOfficeStaffInput = z.infer<typeof createFrontOfficeStaffSchema>

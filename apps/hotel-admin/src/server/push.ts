@@ -13,7 +13,7 @@ export type PushPayload = { title: string; body: string; url?: string }
  * fires correctly end to end. Once those credentials exist, branch on each
  * token's `platform` here and call the respective API.
  */
-export async function sendPushToRecipient(hotelId: string, recipient: 'gm' | 'reception', payload: PushPayload): Promise<void> {
+export async function sendPushToRecipient(hotelId: string, recipient: 'gm' | 'front_office', payload: PushPayload): Promise<void> {
   const tokens = await getDeviceTokensForRecipient(hotelId, recipient)
   if (tokens.length === 0) return
 

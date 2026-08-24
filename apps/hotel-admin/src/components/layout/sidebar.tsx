@@ -24,6 +24,7 @@ import {
   Phone,
 } from 'lucide-react'
 import { cn } from '@roomlink/ui'
+import { isFrontOfficeRoleName } from '@/lib/permissions'
 
 const FULL_NAV_ITEMS = [
   { href: '/hotel/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -34,7 +35,7 @@ const FULL_NAV_ITEMS = [
     icon: Building2,
     group: ['/hotel/profile', '/hotel/legal', '/hotel/departments', '/hotel/rooms', '/hotel/qr-codes'],
   },
-  { href: '/hotel/staff', label: 'People', icon: Users, group: ['/hotel/staff', '/hotel/managers', '/hotel/reception'] },
+  { href: '/hotel/staff', label: 'People', icon: Users, group: ['/hotel/staff', '/hotel/managers', '/hotel/front-office'] },
   {
     href: '/hotel/services',
     label: 'Guest Services',
@@ -82,13 +83,13 @@ const STAFF_NAV_ITEMS = [
 ]
 
 /**
- * Reception PRD §29 — an operational, hotel-wide nav that deliberately
- * excludes Hotel Settings / Staff Management / Department Configuration /
- * Subscription Management (the same screens Reception's `role_permissions`
- * grants already 403 on — this just keeps the nav from advertising links
- * that don't work). "Requests" points at the existing shared `/hotel/requests`
- * page, not a duplicate — Reception already has full view/create/edit
- * access to it via its pre-existing grants.
+ * Front Office (formerly Reception PRD §29) — an operational, hotel-wide nav
+ * that deliberately excludes Hotel Settings / Staff Management / Department
+ * Configuration / Subscription Management (the same screens Front Office's
+ * `role_permissions` grants already 403 on — this just keeps the nav from
+ * advertising links that don't work). "Requests" points at the existing
+ * shared `/hotel/requests` page, not a duplicate — Front Office already has
+ * full view/create/edit access to it via its pre-existing grants.
  *
  * Grouped into sections (rather than a flat list) to match the RoomLink
  * mockup, with deviations requested afterward: Restaurant Menu is its own
@@ -100,13 +101,13 @@ const STAFF_NAV_ITEMS = [
  * Admin app's shared Operations tab strip — `/hotel/guest-sessions` has no
  * role check beyond a valid hotel session, so linking it here is safe).
  * Reports, Settings, and Audit Logs from the mockup still have no
- * corresponding Reception-accessible page, so they remain left out.
+ * corresponding Front-Office-accessible page, so they remain left out.
  */
-const RECEPTION_NAV_SECTIONS = [
+const FRONT_OFFICE_NAV_SECTIONS = [
   {
     section: 'Overview',
     items: [
-      { href: '/hotel/reception-desk/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/hotel/front-office-desk/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/hotel/guest-sessions', label: 'Active Stays', icon: BedDouble },
     ],
   },
@@ -114,21 +115,21 @@ const RECEPTION_NAV_SECTIONS = [
     section: 'Guest Experience',
     items: [
       { href: '/hotel/requests', label: 'Requests', icon: ClipboardList },
-      { href: '/hotel/reception-desk/conversations', label: 'Conversations', icon: MessageSquareText },
+      { href: '/hotel/front-office-desk/conversations', label: 'Conversations', icon: MessageSquareText },
     ],
   },
   {
     section: 'Restaurant',
     items: [
       { href: '/hotel/menu', label: 'Restaurant Menu', icon: ConciergeBell },
-      { href: '/hotel/reception-desk/orders', label: 'Orders', icon: UtensilsCrossed },
+      { href: '/hotel/front-office-desk/orders', label: 'Orders', icon: UtensilsCrossed },
     ],
   },
   {
     section: 'Operations',
     items: [
-      { href: '/hotel/reception-desk/rooms', label: 'Rooms', icon: DoorClosed },
-      { href: '/hotel/reception-desk/staff', label: 'Departments & Staff', icon: Users },
+      { href: '/hotel/front-office-desk/rooms', label: 'Rooms', icon: DoorClosed },
+      { href: '/hotel/front-office-desk/staff', label: 'Departments & Staff', icon: Users },
       { href: '/hotel/services', label: 'Services', icon: Sparkles },
     ],
   },
@@ -136,7 +137,7 @@ const RECEPTION_NAV_SECTIONS = [
     section: 'Communication',
     items: [
       { href: '/hotel/notifications', label: 'Notifications', icon: Bell },
-      { href: '/hotel/reception-desk/call-logs', label: 'Call Logs', icon: Phone },
+      { href: '/hotel/front-office-desk/call-logs', label: 'Call Logs', icon: Phone },
     ],
   },
 ]
@@ -146,7 +147,7 @@ export function Sidebar() {
   const { data: session } = useSession()
   const isDepartmentManager = session?.user?.roleName === 'Department Manager'
   const isDepartmentStaff = session?.user?.roleName === 'Department Staff'
-  const isReception = session?.user?.roleName === 'Reception'
+  const isFrontOffice = isFrontOfficeRoleName(session?.user?.roleName)
   const items = isDepartmentManager ? MANAGER_NAV_ITEMS : isDepartmentStaff ? STAFF_NAV_ITEMS : FULL_NAV_ITEMS
 
   function isActive({ href, group }: { href: string; group?: string[] }) {
@@ -178,8 +179,8 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
-        {isReception
-          ? RECEPTION_NAV_SECTIONS.map(({ section, items: sectionItems }, index) => (
+        {isFrontOffice
+          ? FRONT_OFFICE_NAV_SECTIONS.map(({ section, items: sectionItems }, index) => (
               <div key={section} className={index > 0 ? 'pt-4' : undefined}>
                 <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{section}</p>
                 {sectionItems.map(navLink)}

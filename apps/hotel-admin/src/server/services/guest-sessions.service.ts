@@ -15,7 +15,7 @@ export async function listGuestSessions(hotelId: string) {
 }
 
 /**
- * Reception/GM "Activate Stay" action — a scanning guest verifies against
+ * Front Office/GM "Activate Stay" action — a scanning guest verifies against
  * this stay's mobile number (never a PIN). A photographed old QR must not
  * grant access after checkout (PRD §12) — enforced here by only ever having
  * one active session per room at a time.
@@ -70,7 +70,7 @@ export async function issueGuestSession(hotelId: string, input: IssueGuestSessio
 }
 
 /**
- * Reception "Edit Mobile Number" action — rotates `session_token` so any
+ * Front Office "Edit Mobile Number" action — rotates `session_token` so any
  * browser cookie already issued under the old number stops resolving via
  * `requireGuestSession` immediately, and clears any verification lockout so
  * the guest gets a clean slate against the new number.

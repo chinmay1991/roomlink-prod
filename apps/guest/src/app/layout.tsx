@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
 export const metadata: Metadata = {
   title: 'RoomLink',
-  description: 'Your hotel, in your pocket — contact Reception, request services, and order food from your room.',
+  description: 'Your hotel, in your pocket — contact Front Office, request services, and order food from your room.',
   manifest: '/manifest.webmanifest',
   themeColor: '#3763f4',
   viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',

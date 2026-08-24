@@ -1,5 +1,6 @@
 import { requireHotelPageSession } from '@/server/require-hotel-page-session'
 import { isNativeClient } from '@/server/is-native-client'
+import { isFrontOfficeRoleName } from '@/lib/permissions'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Topbar } from '@/components/layout/topbar'
 import { StaffBottomNav } from '@/components/layout/staff-bottom-nav'
@@ -20,12 +21,12 @@ export default async function HotelPortalLayout({ children }: { children: React.
   // FORCE_NATIVE_SHELL dev override), never for a real browser — so this
   // branch is provably inert for every existing browser/PWA request, which
   // keeps taking the unchanged path below.
-  // Guest calls only ever ring the Reception role (voice-call.service.ts in
+  // Guest calls only ever ring Front Office roles (voice-call.service.ts in
   // apps/guest) — hotel_admin is deliberately excluded so a guest call rings
   // the front desk and nowhere else. Mirroring that here means hotel_admin
   // never even logs into ZIM for this, instead of maintaining a live
   // connection for invitations that will never arrive.
-  const canReceiveVoiceCalls = session.user.roleName === 'Reception'
+  const canReceiveVoiceCalls = isFrontOfficeRoleName(session.user.roleName)
 
   if (isNativeClient()) {
     return (

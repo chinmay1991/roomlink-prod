@@ -92,6 +92,7 @@ model departments {
   name             String             @db.VarChar(100)
   is_custom        Boolean            @default(false)
   is_enabled       Boolean            @default(true)
+  is_mandatory     Boolean            @default(false)
   manager_id       String?            @db.Uuid
   created_at       DateTime           @default(now()) @db.Timestamptz(6)
   hotels           hotels             @relation(fields: [hotel_id], references: [hotel_id], onDelete: Cascade, onUpdate: NoAction)

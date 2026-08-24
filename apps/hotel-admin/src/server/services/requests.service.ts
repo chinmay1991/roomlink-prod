@@ -1,6 +1,7 @@
 import { prisma } from '@/server/db'
 import { recordAudit } from '@/server/audit'
 import { ForbiddenError } from '@/server/hotel-rbac'
+import { isFrontOfficeRoleName } from '@/lib/permissions'
 import { REQUEST_TRANSITIONS, canTransition } from '@/server/transitions'
 import { isAtSlaRisk } from '@/server/sla'
 import { InvalidTransitionError } from '@/server/errors'
@@ -23,7 +24,7 @@ const REQUEST_INCLUDE = {
 
 /**
  * Department-isolation gate (Department Manager PRD §2/§13, Department Staff
- * PRD Rule 3): hotel_admin and Reception see the whole hotel; a Department
+ * PRD Rule 3): hotel_admin and Front Office see the whole hotel; a Department
  * Manager must only ever see the department(s) they manage, and a Department
  * Staff member must only ever see the department(s) they're a member of
  * (via `user_departments`, not `departments.manager_id` — staff have no
@@ -203,7 +204,7 @@ export async function getStaffTaskSummary(hotelId: string, userId: string, depar
 }
 
 /**
- * Reception (or GM) logging a request on a guest's behalf — front-desk call-in
+ * Front Office (or GM) logging a request on a guest's behalf — front-desk call-in
  * is a normal path alongside the guest app. roomId + departmentId are required;
  * guestId is optional since the `guests` model is intentionally lightweight (§9).
  */
@@ -249,7 +250,7 @@ export async function createRequest(hotelId: string, input: CreateRequestInput, 
 }
 
 /**
- * Assign or reassign — used for both the initial Reception -> Manager/Staff
+ * Assign or reassign — used for both the initial Front Office -> Manager/Staff
  * hop and any later reassignment (PRD §19 routing). Sets status to
  * `assigned` only when moving out of `pending`; a reassignment mid-flight
  * keeps the current status.
@@ -426,7 +427,7 @@ export async function escalateRequest(hotelId: string, requestId: string, input:
   const request = await prisma.requests.findFirstOrThrow({ where: { request_id: requestId, hotel_id: hotelId } })
   await assertCanManageRequest(hotelId, request.department_id, actor)
 
-  const note = `[Urgency: ${input.urgency} | To: ${input.recipient === 'gm' ? 'Hotel Admin/GM' : 'Reception'}] ${input.reason}`
+  const note = `[Urgency: ${input.urgency} | To: ${input.recipient === 'gm' ? 'Hotel Admin/GM' : 'Front Office'}] ${input.reason}`
 
   const after = await prisma.$transaction(async (tx) => {
     const updated = await tx.requests.update({ where: { request_id: requestId }, data: { status: 'escalated' } })
@@ -514,12 +515,12 @@ export async function getRequestHistory(hotelId: string, requestId: string, acto
   })
 }
 
-/** Assign/reassign/escalate: hotel_admin, Reception (hotel-wide), or the department's own manager. */
+/** Assign/reassign/escalate: hotel_admin, Front Office (hotel-wide), or the department's own manager. */
 async function assertCanManageRequest(hotelId: string, departmentId: string | null, actor: HotelSessionUser) {
   if (actor.userType === 'hotel_admin') return
 
   const role = await prisma.roles.findUnique({ where: { role_id: actor.roleId } })
-  if (role?.name === 'Reception') return
+  if (isFrontOfficeRoleName(role?.name)) return
   if (role?.name === 'Department Manager' && departmentId) {
     const managed = await prisma.departments.findFirst({
       where: { hotel_id: hotelId, department_id: departmentId, manager_id: actor.id },

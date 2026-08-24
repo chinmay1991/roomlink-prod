@@ -33,14 +33,14 @@ beforeEach(() => {
 })
 
 describe('startVoiceCall', () => {
-  it('rings only Reception-role staff at this hotel — not hotel_admin or any other role', async () => {
+  it('rings only Front-Office-role staff at this hotel — not hotel_admin or any other role', async () => {
     const result = await startVoiceCall(CTX)
 
     expect(mockPrisma.users.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           hotel_id: 'hotel-1',
-          roles: { name: 'Reception' },
+          roles: { name: { in: ['Front Office Manager', 'Front Office Staff'] } },
         }),
       }),
     )
@@ -48,7 +48,7 @@ describe('startVoiceCall', () => {
     expect(result.userId).toBe(guestZegoUserId('session-1'))
   })
 
-  it('includes the caller room number and guest name for Reception\'s incoming-call popup', async () => {
+  it('includes the caller room number and guest name for Front Office\'s incoming-call popup', async () => {
     const result = await startVoiceCall(CTX)
 
     expect(result.roomNumber).toBe('204')
@@ -86,7 +86,7 @@ describe('startVoiceCall', () => {
     )
   })
 
-  it('rejects a 6th call within the rate-limit window instead of ringing reception again', async () => {
+  it('rejects a 6th call within the rate-limit window instead of ringing Front Office again', async () => {
     mockPrisma.call_logs.count.mockResolvedValue(5)
 
     await expect(startVoiceCall(CTX)).rejects.toThrow(RateLimitedError)

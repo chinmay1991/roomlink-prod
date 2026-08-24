@@ -1,8 +1,8 @@
 import { z } from 'zod'
 import { uuid } from './common'
 
+/** Front Office is not offered here — it's mandatory and auto-created for every hotel (see hotel-roles.service.ts). */
 export const DEFAULT_DEPARTMENT_TEMPLATES = [
-  'Reception',
   'Housekeeping',
   'Restaurant',
   'Maintenance',

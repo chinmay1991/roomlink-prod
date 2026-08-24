@@ -32,7 +32,7 @@ export async function resolveQrCode(codeValue: string) {
     where: { hotel_id: qr.rooms.hotel_id, room_id: qr.rooms.room_id, status: 'active' },
   })
   if (!activeSession) {
-    throw new SessionNotActiveError('no_active_stay', 'This RoomLink session is not currently active. Please contact Reception.')
+    throw new SessionNotActiveError('no_active_stay', 'This RoomLink session is not currently active. Please contact Front Office.')
   }
 
   return {
@@ -46,7 +46,7 @@ export async function resolveQrCode(codeValue: string) {
 /**
  * Guest mobile-number verification — hotel + room + active stay, all
  * derived server-side from `codeValue`, never from a client-asserted
- * hotel/room id. The submitted number is normalized the same way Reception's
+ * hotel/room id. The submitted number is normalized the same way Front Office's
  * input was at activation time before comparison — never compare a raw,
  * unnormalized value. Returns the session_token to be set as the guest's
  * cookie by the calling route handler (cookie mutation isn't available from
@@ -62,7 +62,7 @@ export async function verifyGuestMobile(input: VerifySessionInput) {
   // re-check here defensively in case of a race between the two calls,
   // rather than assume it's still true a moment later.
   if (!session) {
-    throw new SessionNotActiveError('no_active_stay', 'This RoomLink session is not currently active. Please contact Reception.')
+    throw new SessionNotActiveError('no_active_stay', 'This RoomLink session is not currently active. Please contact Front Office.')
   }
 
   // Lockout is persisted on the guest_sessions row itself (not an in-memory

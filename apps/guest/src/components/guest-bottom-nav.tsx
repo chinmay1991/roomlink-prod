@@ -16,7 +16,7 @@ const ITEMS = [
 /**
  * Guest PRD §32 — the only nav this app has (no desktop-sidebar equivalent;
  * every guest is mobile-first, unconditionally, unlike the Staff app's
- * role-gated bottom bar). "More" opens Reception/Menu/Hotel Info/Profile —
+ * role-gated bottom bar). "More" opens Front Office/Menu/Hotel Info/Profile —
  * five primary destinations plus an overflow, since the Home screen already
  * covers six actions but PRD §32 recommends five nav slots.
  */

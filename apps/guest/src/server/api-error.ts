@@ -14,7 +14,7 @@ export function toErrorResponse(error: unknown) {
     return NextResponse.json({ error: error.message }, { status: 401 })
   }
   if (error instanceof UnauthorizedError) {
-    return NextResponse.json({ error: 'Your session is no longer active. Please contact Reception.' }, { status: 401 })
+    return NextResponse.json({ error: 'Your session is no longer active. Please contact Front Office.' }, { status: 401 })
   }
   if (error instanceof SessionNotActiveError) {
     return NextResponse.json({ error: error.message, reason: error.reason }, { status: 401 })

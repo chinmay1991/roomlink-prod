@@ -2,7 +2,7 @@
 -- RoomLink — Digital Intercom & Guest Service Platform
 -- PostgreSQL Database Schema
 -- Covers: Super Admin (platform), Hotel Admin (property ops),
---         Reception, Guest experience, Billing, Support, Audit
+--         Front Office, Guest experience, Billing, Support, Audit
 -- Version: 1.0
 -- =====================================================================
 
@@ -102,7 +102,7 @@ CREATE INDEX idx_subscriptions_hotel ON subscriptions(hotel_id);
 CREATE TABLE roles (
     role_id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     hotel_id        UUID REFERENCES hotels(hotel_id) ON DELETE CASCADE, -- NULL = platform-level system role
-    name            VARCHAR(100) NOT NULL,          -- e.g. Super Admin, Hotel Admin, Receptionist, Housekeeping Supervisor
+    name            VARCHAR(100) NOT NULL,          -- e.g. Super Admin, Hotel Admin, Front Office Staff, Housekeeping Supervisor
     is_system_role  BOOLEAN NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (hotel_id, name)
@@ -124,7 +124,7 @@ CREATE TABLE role_permissions (
     PRIMARY KEY (role_id, permission_id)
 );
 
--- Departments (per hotel: Reception, Housekeeping, Maintenance, Restaurant, Spa, Transport, custom)
+-- Departments (per hotel: Front Office (mandatory), Housekeeping, Maintenance, Restaurant, Spa, Transport, custom)
 CREATE TABLE departments (
     department_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     hotel_id        UUID NOT NULL REFERENCES hotels(hotel_id) ON DELETE CASCADE,

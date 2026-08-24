@@ -3,7 +3,7 @@ import { ChevronRight, MessageSquareText, Wrench, UtensilsCrossed, Info, UserCir
 import { Card } from '@roomlink/ui'
 
 const ITEMS = [
-  { href: '/reception', label: 'Contact Reception', icon: MessageSquareText },
+  { href: '/front-office', label: 'Contact Front Office', icon: MessageSquareText },
   { href: '/services', label: 'Request Service', icon: Wrench },
   { href: '/menu', label: 'Order Food', icon: UtensilsCrossed },
   { href: '/hotel-info', label: 'Hotel Information', icon: Info },

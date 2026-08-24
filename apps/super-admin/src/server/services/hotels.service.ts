@@ -71,6 +71,12 @@ export async function createHotel(input: CreateHotelInput, actorId: string): Pro
       data: { hotel_id: hotel.hotel_id, name: 'Hotel Admin', is_system_role: false },
     })
 
+    // Front Office is a normal department, but a mandatory one — every hotel gets it
+    // at creation time, the same way every hotel gets a Hotel Admin role.
+    await tx.departments.create({
+      data: { hotel_id: hotel.hotel_id, name: 'Front Office', is_custom: false, is_enabled: true, is_mandatory: true },
+    })
+
     const admin = await tx.users.create({
       data: {
         hotel_id: hotel.hotel_id,

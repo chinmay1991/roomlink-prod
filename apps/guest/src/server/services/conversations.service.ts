@@ -5,7 +5,7 @@ import type { GuestSessionContext } from '@/server/require-guest-session'
 
 /**
  * Guest PRD §10 — one conversation thread per stay, reused across messages
- * (matches "Reception is the primary operational contact" — a running
+ * (matches "Front Office is the primary operational contact" — a running
  * thread, not a new ticket per message). Reuses the existing `conversations`/
  * `messages` tables verbatim (`sender_type` already includes `guest`), per
  * both PRDs' explicit "do not create a separate chat database" instruction.

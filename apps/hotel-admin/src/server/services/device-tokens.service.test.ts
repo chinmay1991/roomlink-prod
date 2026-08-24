@@ -43,12 +43,12 @@ describe('getDeviceTokensForRecipient', () => {
     })
   })
 
-  it('targets the Reception role for the "reception" recipient', async () => {
+  it('targets both Front Office roles for the "front_office" recipient', async () => {
     mockPrisma.device_tokens.findMany.mockResolvedValue([])
-    await getDeviceTokensForRecipient('hotel-1', 'reception')
+    await getDeviceTokensForRecipient('hotel-1', 'front_office')
 
     expect(mockPrisma.device_tokens.findMany).toHaveBeenCalledWith({
-      where: { hotel_id: 'hotel-1', users: { roles: { name: 'Reception' } } },
+      where: { hotel_id: 'hotel-1', users: { roles: { name: { in: ['Front Office Manager', 'Front Office Staff'] } } } },
       select: { token: true, platform: true },
     })
   })

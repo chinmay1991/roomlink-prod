@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
-/** Kept in sync with apps/hotel-admin's list — offered as quick-add suggestions here too. */
+/** Kept in sync with apps/hotel-admin's list — offered as quick-add suggestions here too.
+ * Front Office is not offered here — it's mandatory and auto-created for every hotel. */
 export const DEFAULT_DEPARTMENT_TEMPLATES = [
-  'Reception',
   'Housekeeping',
   'Restaurant',
   'Maintenance',

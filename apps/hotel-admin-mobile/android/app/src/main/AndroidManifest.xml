@@ -38,7 +38,7 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Reception answers guest voice calls (ZegoCloud) from inside this app -->
+    <!-- Front Office answers guest voice calls (ZegoCloud) from inside this app -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 </manifest>

@@ -1,7 +1,8 @@
 import { prisma } from '@/server/db'
 import { recordAudit } from '@/server/audit'
 import { markStepComplete } from '@/server/services/hotel-onboarding.service'
-import { getOrCreateHotelRole } from '@/server/services/hotel-roles.service'
+import { getOrCreateHotelRole, FRONT_OFFICE_DEPARTMENT_NAME } from '@/server/services/hotel-roles.service'
+import { ForbiddenError } from '@/server/hotel-rbac'
 import { DEFAULT_DEPARTMENT_TEMPLATES, EnableDepartmentInput, RenameDepartmentInput } from '@/server/validation/department.schema'
 import type { HotelSessionUser } from '@/server/require-hotel-session'
 
@@ -63,6 +64,10 @@ export async function getManagerTeam(hotelId: string, departmentIds: string[]) {
 }
 
 export async function enableDepartment(hotelId: string, input: EnableDepartmentInput, actor: HotelSessionUser) {
+  if (input.name.trim() === FRONT_OFFICE_DEPARTMENT_NAME) {
+    throw new ForbiddenError('Front Office already exists for every hotel and cannot be created again')
+  }
+
   const department = await prisma.departments.create({
     data: { hotel_id: hotelId, name: input.name, is_custom: input.isCustom, is_enabled: true },
   })
@@ -88,6 +93,9 @@ export async function renameDepartment(
   actor: HotelSessionUser
 ) {
   const before = await prisma.departments.findFirstOrThrow({ where: { department_id: departmentId, hotel_id: hotelId } })
+  if (before.is_mandatory) {
+    throw new ForbiddenError('Front Office is mandatory and cannot be renamed')
+  }
 
   const after = await prisma.departments.update({
     where: { department_id: departmentId },
@@ -127,7 +135,8 @@ export async function setDepartmentManager(
     const candidate = await prisma.users.findFirstOrThrow({
       where: { user_id: managerId, hotel_id: hotelId, user_type: 'hotel_staff' },
     })
-    const managerRole = await getOrCreateHotelRole(hotelId, 'Department Manager')
+    const managerRoleName = department.is_mandatory ? 'Front Office Manager' : 'Department Manager'
+    const managerRole = await getOrCreateHotelRole(hotelId, managerRoleName)
 
     await prisma.$transaction(async (tx) => {
       await tx.departments.update({ where: { department_id: departmentId }, data: { manager_id: managerId } })
@@ -143,7 +152,7 @@ export async function setDepartmentManager(
   }
 
   if (previousManagerId && previousManagerId !== managerId) {
-    await demoteIfNoLongerManaging(hotelId, previousManagerId)
+    await demoteIfNoLongerManaging(hotelId, previousManagerId, department.is_mandatory)
   }
 
   await recordAudit({
@@ -162,11 +171,11 @@ export async function setDepartmentManager(
   })
 }
 
-async function demoteIfNoLongerManaging(hotelId: string, userId: string) {
+async function demoteIfNoLongerManaging(hotelId: string, userId: string, wasFrontOffice: boolean) {
   const stillManaging = await prisma.departments.count({ where: { hotel_id: hotelId, manager_id: userId } })
   if (stillManaging > 0) return
 
-  const staffRole = await getOrCreateHotelRole(hotelId, 'Department Staff')
+  const staffRole = await getOrCreateHotelRole(hotelId, wasFrontOffice ? 'Front Office Staff' : 'Department Staff')
   await prisma.users.update({ where: { user_id: userId }, data: { role_id: staffRole.role_id } })
 }
 
@@ -181,6 +190,9 @@ export async function getDepartmentsByIds(hotelId: string, departmentIds: string
 
 export async function toggleDepartmentEnabled(hotelId: string, departmentId: string, actor: HotelSessionUser) {
   const before = await prisma.departments.findFirstOrThrow({ where: { department_id: departmentId, hotel_id: hotelId } })
+  if (before.is_mandatory) {
+    throw new ForbiddenError('Front Office is mandatory and cannot be disabled')
+  }
 
   const after = await prisma.departments.update({
     where: { department_id: departmentId },

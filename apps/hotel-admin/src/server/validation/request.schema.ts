@@ -30,7 +30,7 @@ export type UpdateRequestStatusInput = z.infer<typeof updateRequestStatusSchema>
 
 export const escalateRequestSchema = z.object({
   urgency: z.enum(['normal', 'high', 'urgent']),
-  recipient: z.enum(['reception', 'gm']),
+  recipient: z.enum(['front_office', 'gm']),
   reason: z.string().trim().min(3, 'A reason is required to escalate').max(800),
 })
 export type EscalateRequestInput = z.infer<typeof escalateRequestSchema>

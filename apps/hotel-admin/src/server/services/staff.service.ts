@@ -2,10 +2,10 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/server/db'
 import { recordAudit } from '@/server/audit'
 import { generateTempPassword } from '@/lib/temp-password'
-import { getOrCreateHotelRole } from '@/server/services/hotel-roles.service'
+import { getOrCreateHotelRole, FRONT_OFFICE_DEPARTMENT_NAME, FRONT_OFFICE_ROLE_NAMES } from '@/server/services/hotel-roles.service'
 import { markStepComplete } from '@/server/services/hotel-onboarding.service'
 import { ForbiddenError } from '@/server/hotel-rbac'
-import type { CreateStaffInput, UpdateStaffInput, CreateReceptionInput } from '@/server/validation/staff.schema'
+import type { CreateStaffInput, UpdateStaffInput, CreateFrontOfficeStaffInput } from '@/server/validation/staff.schema'
 import type { HotelSessionUser } from '@/server/require-hotel-session'
 
 const STAFF_INCLUDE = {
@@ -14,7 +14,7 @@ const STAFF_INCLUDE = {
   departments_managed: { select: { department_id: true, name: true } },
 } as const
 
-/** Every non-Reception hotel_staff user — Department Staff and Department Manager share this list (§7 of the PRD: one staff account, many departments). */
+/** Every non-Front-Office hotel_staff user — Department Staff and Department Manager share this list (§7 of the PRD: one staff account, many departments). */
 export async function listStaff(hotelId: string) {
   return prisma.users.findMany({
     where: { hotel_id: hotelId, user_type: 'hotel_staff', roles: { name: { in: ['Department Staff', 'Department Manager'] } } },
@@ -45,9 +45,9 @@ export async function getOwnStaffProfile(hotelId: string, userId: string) {
   })
 }
 
-export async function listReception(hotelId: string) {
+export async function listFrontOfficeStaff(hotelId: string) {
   return prisma.users.findMany({
-    where: { hotel_id: hotelId, user_type: 'hotel_staff', roles: { name: 'Reception' } },
+    where: { hotel_id: hotelId, user_type: 'hotel_staff', roles: { name: { in: [...FRONT_OFFICE_ROLE_NAMES] } } },
     orderBy: { full_name: 'asc' },
     include: STAFF_INCLUDE,
   })
@@ -109,32 +109,54 @@ export async function createStaff(hotelId: string, input: CreateStaffInput, acto
   return { user, tempPassword }
 }
 
-export async function createReception(hotelId: string, input: CreateReceptionInput, actor: HotelSessionUser) {
-  const role = await getOrCreateHotelRole(hotelId, 'Reception')
+/**
+ * Front Office is a mandatory department every hotel already has (see
+ * hotels.service.ts/the Front Office migration) — staff created here are
+ * always linked to it via user_departments, unlike the old Reception flow
+ * which had no department membership at all. This is what lets Front Office
+ * staff show up in department-scoped screens (Team, monitoring) the same
+ * way every other department's staff already do.
+ */
+export async function createFrontOfficeStaff(hotelId: string, input: CreateFrontOfficeStaffInput, actor: HotelSessionUser) {
+  const [role, frontOffice] = await Promise.all([
+    getOrCreateHotelRole(hotelId, 'Front Office Staff'),
+    prisma.departments.findFirstOrThrow({ where: { hotel_id: hotelId, name: FRONT_OFFICE_DEPARTMENT_NAME } }),
+  ])
   const tempPassword = generateTempPassword()
   const passwordHash = await bcrypt.hash(tempPassword, 10)
 
-  const user = await prisma.users.create({
-    data: {
-      hotel_id: hotelId,
-      role_id: role.role_id,
-      user_type: 'hotel_staff',
-      full_name: input.fullName,
-      employee_id: input.employeeId || null,
-      email: input.email,
-      phone: input.mobile || null,
-      password_hash: passwordHash,
-      status: 'active',
-    },
-  })
+  const user = await prisma.$transaction(async (tx) => {
+    const created = await tx.users.create({
+      data: {
+        hotel_id: hotelId,
+        role_id: role.role_id,
+        user_type: 'hotel_staff',
+        full_name: input.fullName,
+        employee_id: input.employeeId || null,
+        email: input.email,
+        phone: input.mobile || null,
+        password_hash: passwordHash,
+        status: 'active',
+      },
+    })
 
-  await recordAudit({
-    actorId: actor.id,
-    actorType: actor.userType,
-    action: 'reception.created',
-    entityType: 'user',
-    entityId: user.user_id,
-    afterState: { full_name: user.full_name },
+    await tx.user_departments.create({
+      data: { user_id: created.user_id, department_id: frontOffice.department_id, is_primary: true },
+    })
+
+    await recordAudit(
+      {
+        actorId: actor.id,
+        actorType: actor.userType,
+        action: 'front_office_staff.created',
+        entityType: 'user',
+        entityId: created.user_id,
+        afterState: { full_name: created.full_name },
+      },
+      tx
+    )
+
+    return created
   })
 
   return { user, tempPassword }

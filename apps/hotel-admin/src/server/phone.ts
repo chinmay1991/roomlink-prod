@@ -3,7 +3,7 @@ const E164_REGEX = /^\+[1-9]\d{6,14}$/
 /**
  * This pilot's hotels are all India-based, so a number typed without a `+`
  * is assumed to be a local Indian number and gets `+91` prepended.
- * Reception is asked to type full E.164, but this still normalizes
+ * Front Office staff are asked to type full E.164, but this still normalizes
  * leniently-typed input consistently rather than trusting the raw value.
  * Mirrors apps/guest/src/server/phone.ts (same normalization must be used
  * on both sides for a match to ever succeed).

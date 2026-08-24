@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-/** Ground floor is entered as "0" — the reception dashboard's floor-wise pagination is purely numeric (0-100), so free text like "Floor 1" or "Ground" is no longer accepted here. */
+/** Ground floor is entered as "0" — the Front Office dashboard's floor-wise pagination is purely numeric (0-100), so free text like "Floor 1" or "Ground" is no longer accepted here. */
 const floorSchema = z
   .string()
   .trim()
