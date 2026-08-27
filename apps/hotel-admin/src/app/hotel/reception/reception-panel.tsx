@@ -14,6 +14,7 @@ export function ReceptionPanel({ reception }: { reception: ReceptionRow[] }) {
   const [submitting, setSubmitting] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [result, setResult] = useState<{ email: string; password: string } | null>(null)
+  const [lastTempPassword, setLastTempPassword] = useState<{ name: string; password: string } | null>(null)
 
   const {
     register,
@@ -45,8 +46,22 @@ export function ReceptionPanel({ reception }: { reception: ReceptionRow[] }) {
     router.refresh()
   }
 
+  async function resetAccess(userId: string, name: string) {
+    setBusyId(userId)
+    const res = await fetch(`/api/v1/hotel/staff/${userId}/reset-access`, { method: 'POST' })
+    const data = await res.json()
+    setBusyId(null)
+    if (res.ok) setLastTempPassword({ name, password: data.tempPassword })
+  }
+
   return (
     <div className="space-y-5">
+      {lastTempPassword && (
+        <div className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          New temporary password for {lastTempPassword.name}: <code className="font-mono">{lastTempPassword.password}</code>
+        </div>
+      )}
+
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -70,14 +85,24 @@ export function ReceptionPanel({ reception }: { reception: ReceptionRow[] }) {
                     <StatusBadge status={row.status} />
                   </td>
                   <td className="px-5 py-3 text-right">
-                    <Button
-                      variant="secondary"
-                      className="h-8 px-3 text-xs"
-                      disabled={busyId === row.user_id}
-                      onClick={() => toggleStatus(row.user_id)}
-                    >
-                      {row.status === 'active' ? 'Deactivate' : 'Activate'}
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="secondary"
+                        className="h-8 px-3 text-xs"
+                        disabled={busyId === row.user_id}
+                        onClick={() => resetAccess(row.user_id, row.full_name)}
+                      >
+                        Reset access
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        className="h-8 px-3 text-xs"
+                        disabled={busyId === row.user_id}
+                        onClick={() => toggleStatus(row.user_id)}
+                      >
+                        {row.status === 'active' ? 'Deactivate' : 'Activate'}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
