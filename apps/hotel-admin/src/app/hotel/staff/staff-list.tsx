@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, Button, StatusBadge } from '@roomlink/ui'
+import { Card, Button, StatusBadge, Pagination } from '@roomlink/ui'
 
 type Department = { department_id: string; name: string }
 type StaffRow = {
@@ -15,17 +15,27 @@ type StaffRow = {
   user_departments: { departments: Department }[]
   departments_managed: Department[]
 }
+type PaginationInfo = { page: number; totalPages: number; status: 'active' | 'disabled' }
 
 export function StaffList({
   staff,
   departments,
   isNative = false,
+  pagination,
 }: {
   staff: StaffRow[]
   departments: Department[]
   isNative?: boolean
+  pagination?: PaginationInfo
 }) {
   const router = useRouter()
+  const buildHref = (targetPage: number) => {
+    const params = new URLSearchParams()
+    if (pagination && pagination.status !== 'active') params.set('status', pagination.status)
+    if (targetPage > 1) params.set('page', String(targetPage))
+    const qs = params.toString()
+    return qs ? `/hotel/staff?${qs}` : '/hotel/staff'
+  }
   const [busyId, setBusyId] = useState<string | null>(null)
   const [editingDeptsFor, setEditingDeptsFor] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -164,6 +174,7 @@ export function StaffList({
               ))}
             </ul>
           )}
+          {pagination && <Pagination page={pagination.page} totalPages={pagination.totalPages} buildHref={buildHref} />}
         </Card>
       </div>
     )
@@ -292,6 +303,7 @@ export function StaffList({
             </tbody>
           </table>
         </div>
+        {pagination && <Pagination page={pagination.page} totalPages={pagination.totalPages} buildHref={buildHref} />}
       </Card>
     </div>
   )

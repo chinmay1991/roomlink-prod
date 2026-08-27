@@ -23,6 +23,14 @@ export const setStaffDepartmentsSchema = z.object({
 })
 export type SetStaffDepartmentsInput = z.infer<typeof setStaffDepartmentsSchema>
 
+export const staffListFiltersSchema = z.object({
+  status: z.enum(['active', 'disabled']).default('active'),
+  page: z.coerce.number().int().min(1).default(1),
+})
+export type StaffListFilters = z.infer<typeof staffListFiltersSchema>
+
+export const STAFF_PAGE_SIZE = 10
+
 export const createReceptionSchema = z.object({
   fullName: z.string().trim().min(2, 'Name is required').max(150),
   employeeId: z.string().trim().max(50).optional().or(z.literal('')),

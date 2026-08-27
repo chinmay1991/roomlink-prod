@@ -5,7 +5,7 @@ import { generateTempPassword } from '@/lib/temp-password'
 import { getOrCreateHotelRole } from '@/server/services/hotel-roles.service'
 import { markStepComplete } from '@/server/services/hotel-onboarding.service'
 import { ForbiddenError } from '@/server/hotel-rbac'
-import type { CreateStaffInput, UpdateStaffInput, CreateReceptionInput } from '@/server/validation/staff.schema'
+import { STAFF_PAGE_SIZE, type CreateStaffInput, type UpdateStaffInput, type CreateReceptionInput, type StaffListFilters } from '@/server/validation/staff.schema'
 import type { HotelSessionUser } from '@/server/require-hotel-session'
 
 const STAFF_INCLUDE = {
@@ -21,6 +21,34 @@ export async function listStaff(hotelId: string) {
     orderBy: { full_name: 'asc' },
     include: STAFF_INCLUDE,
   })
+}
+
+/** Paginated, status-filtered staff listing for the Staff page — active-only by default, 10 per page. */
+export async function listStaffPage(hotelId: string, filters: StaffListFilters) {
+  const where = {
+    hotel_id: hotelId,
+    user_type: 'hotel_staff' as const,
+    roles: { name: { in: ['Department Staff', 'Department Manager'] } },
+    status: filters.status,
+  }
+
+  const [items, total] = await Promise.all([
+    prisma.users.findMany({
+      where,
+      orderBy: { full_name: 'asc' },
+      skip: (filters.page - 1) * STAFF_PAGE_SIZE,
+      take: STAFF_PAGE_SIZE,
+      include: STAFF_INCLUDE,
+    }),
+    prisma.users.count({ where }),
+  ])
+
+  return {
+    items,
+    total,
+    page: filters.page,
+    totalPages: Math.max(1, Math.ceil(total / STAFF_PAGE_SIZE)),
+  }
 }
 
 /**
