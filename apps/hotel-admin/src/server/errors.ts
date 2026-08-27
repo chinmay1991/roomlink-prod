@@ -10,6 +10,3 @@ export class InvalidPhoneError extends Error {
     super('Enter a valid mobile number, e.g. +919876543210.')
   }
 }
-
-/** Thrown when reading menu items off an uploaded photo fails or finds nothing usable. */
-export class MenuExtractionError extends Error {}

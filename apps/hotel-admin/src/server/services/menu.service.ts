@@ -1,13 +1,7 @@
 import { prisma } from '@/server/db'
 import { recordAudit } from '@/server/audit'
 import { markStepComplete } from '@/server/services/hotel-onboarding.service'
-import { ForbiddenError } from '@/server/hotel-rbac'
-import type {
-  CreateCategoryInput,
-  CreateMenuItemInput,
-  UpdateMenuItemInput,
-  BulkCreateMenuItemsInput,
-} from '@/server/validation/menu.schema'
+import type { CreateCategoryInput, CreateMenuItemInput, UpdateMenuItemInput } from '@/server/validation/menu.schema'
 import type { HotelSessionUser } from '@/server/require-hotel-session'
 
 export async function listCategories(hotelId: string) {
@@ -68,50 +62,6 @@ export async function createMenuItem(hotelId: string, input: CreateMenuItemInput
   await markStepComplete(hotelId, 'Restaurant Menu')
 
   return item
-}
-
-/** Bulk-create menu items from the image-import review step — each item already carries its admin-picked categoryId (§ Restaurant Menu photo import). */
-export async function bulkCreateMenuItems(hotelId: string, items: BulkCreateMenuItemsInput, actor: HotelSessionUser) {
-  const categoryIds = Array.from(new Set(items.map((item) => item.categoryId)))
-  const owned = await prisma.menu_categories.count({ where: { hotel_id: hotelId, category_id: { in: categoryIds } } })
-  if (owned !== categoryIds.length) throw new ForbiddenError('One or more categories do not belong to this hotel')
-
-  const created = await prisma.$transaction(async (tx) => {
-    const rows = []
-    for (const item of items) {
-      const row = await tx.menu_items.create({
-        data: {
-          hotel_id: hotelId,
-          category_id: item.categoryId,
-          name: item.name,
-          description: item.description || null,
-          price: item.price,
-          is_veg: item.isVeg ?? null,
-          status: 'active',
-          is_available: true,
-        },
-      })
-      rows.push(row)
-    }
-    return rows
-  })
-
-  await Promise.all(
-    created.map((item) =>
-      recordAudit({
-        actorId: actor.id,
-        actorType: actor.userType,
-        action: 'menu_item.created',
-        entityType: 'menu_item',
-        entityId: item.item_id,
-        afterState: { name: item.name, price: item.price.toString() },
-      })
-    )
-  )
-
-  await markStepComplete(hotelId, 'Restaurant Menu')
-
-  return created
 }
 
 export async function updateMenuItem(hotelId: string, itemId: string, input: UpdateMenuItemInput, actor: HotelSessionUser) {

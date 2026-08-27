@@ -3,7 +3,6 @@ import { listCategories, listMenuItems } from '@/server/services/menu.service'
 import { SectionTabs } from '@/components/layout/section-tabs'
 import { MenuItemList } from './menu-item-list'
 import { MenuForms } from './menu-forms'
-import { MenuImageImport } from './menu-image-import'
 
 export default async function MenuPage() {
   const session = await requireHotelPageSession()
@@ -25,7 +24,6 @@ export default async function MenuPage() {
           menu_categories: i.menu_categories,
         }))}
       />
-      <MenuImageImport categories={categories} />
       <MenuForms categories={categories} />
     </div>
   )
