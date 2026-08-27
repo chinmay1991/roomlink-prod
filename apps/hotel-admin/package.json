@@ -13,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.121.0",
     "@capacitor/core": "^6.2.1",
     "@capacitor/push-notifications": "^6.0.3",
     "@hookform/resolvers": "^5.9.0",

@@ -3,7 +3,7 @@ import { ZodError } from 'zod'
 import { Prisma } from '@roomlink/db'
 import { UnauthorizedError } from '@/server/require-hotel-session'
 import { ForbiddenError } from '@/server/hotel-rbac'
-import { InvalidTransitionError, ConfigurationError, InvalidPhoneError } from '@/server/errors'
+import { InvalidTransitionError, ConfigurationError, InvalidPhoneError, MenuExtractionError } from '@/server/errors'
 
 export function toErrorResponse(error: unknown) {
   if (error instanceof UnauthorizedError) {
@@ -17,10 +17,13 @@ export function toErrorResponse(error: unknown) {
   }
   if (error instanceof ConfigurationError) {
     console.error(error)
-    return NextResponse.json({ error: 'QR generation is misconfigured. Contact support.' }, { status: 500 })
+    return NextResponse.json({ error: 'This feature is misconfigured. Contact support.' }, { status: 500 })
   }
   if (error instanceof InvalidPhoneError) {
     return NextResponse.json({ error: error.message }, { status: 400 })
+  }
+  if (error instanceof MenuExtractionError) {
+    return NextResponse.json({ error: error.message }, { status: 422 })
   }
   if (error instanceof ZodError) {
     return NextResponse.json({ error: 'Invalid input', issues: error.flatten() }, { status: 400 })
