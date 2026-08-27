@@ -92,7 +92,7 @@ export function RequestsBoard({
   // Escalate modal
   const [escalateFor, setEscalateFor] = useState<string | null>(null)
   const [escalateUrgency, setEscalateUrgency] = useState<'normal' | 'high' | 'urgent'>('high')
-  const [escalateRecipient, setEscalateRecipient] = useState<'front_office' | 'gm'>('front_office')
+  const [escalateRecipient, setEscalateRecipient] = useState<'reception' | 'gm'>('reception')
   const [escalateReason, setEscalateReason] = useState('')
 
   // Cancel modal
@@ -484,7 +484,7 @@ export function RequestsBoard({
             <div>
               <label className="mb-1.5 block text-xs font-medium text-slate-500">Recipient</label>
               <Select value={escalateRecipient} onChange={(e) => setEscalateRecipient(e.target.value as typeof escalateRecipient)}>
-                <option value="front_office">Front Office</option>
+                <option value="reception">Reception</option>
                 <option value="gm">Hotel Admin / GM</option>
               </Select>
             </div>

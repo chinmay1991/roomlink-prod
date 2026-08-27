@@ -7,8 +7,8 @@ const ORDER_INCLUDE = {
 } as const
 
 /**
- * Front Office (formerly Reception PRD) §24 — hotel-wide visibility only. No status-mutation
- * function exists here on purpose: Front Office monitors and communicates
+ * Reception PRD §24 — hotel-wide visibility only. No status-mutation
+ * function exists here on purpose: Reception monitors and communicates
  * status to the guest, but "restaurant staff/manager remain responsible for
  * order execution" (PRD's own words) — building that side is out of this
  * module's scope.

@@ -20,7 +20,7 @@ export type GuestSessionContext = {
  * client can never assert its own `hotelId`/`roomId`/`sessionId`.
  *
  * Access has no time-based cutoff — a room's stay stays valid until
- * Front Office explicitly ends it (`status` flips to `terminated`), not until
+ * Reception explicitly ends it (`status` flips to `terminated`), not until
  * some clock reaches `expires_at`. `expires_at` is retained on the row for
  * display only; it is never compared against `now()` here.
  */

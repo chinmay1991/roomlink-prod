@@ -5,7 +5,7 @@ import { getMe } from '@/server/services/session.service'
 import { Card } from '@roomlink/ui'
 
 const ACTIONS = [
-  { href: '/front-office', label: 'Contact Front Office', icon: MessageSquareText },
+  { href: '/reception', label: 'Contact Reception', icon: MessageSquareText },
   { href: '/services', label: 'Request Service', icon: Wrench },
   { href: '/menu', label: 'Order Food', icon: UtensilsCrossed },
   { href: '/requests', label: 'My Requests', icon: ClipboardList },

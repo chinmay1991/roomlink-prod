@@ -58,7 +58,7 @@ export function MobileForm({ codeValue, hotelName, roomNumber }: { codeValue: st
           aria-label="Mobile number"
         />
         <p className="text-center text-xs text-slate-400">
-          Use the mobile number Front Office has on file for your stay.
+          Use the mobile number Reception has on file for your stay.
         </p>
       </div>
 

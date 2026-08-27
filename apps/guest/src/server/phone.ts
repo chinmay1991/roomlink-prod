@@ -3,7 +3,7 @@ const E164_REGEX = /^\+[1-9]\d{6,14}$/
 /**
  * This pilot's hotels are all India-based, so a number typed without a `+`
  * (the natural way a guest types their own number on their own phone) is
- * assumed to be a local Indian number and gets `+91` prepended. Front Office's
+ * assumed to be a local Indian number and gets `+91` prepended. Reception's
  * input (expected in full E.164) and the guest's input both funnel through
  * this same function before comparison — never compare raw, unnormalized
  * values.

@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'RoomLink',
     short_name: 'RoomLink',
-    description: 'Contact Front Office, request hotel services, order food, and track requests — right from your room.',
+    description: 'Contact Reception, request hotel services, order food, and track requests — right from your room.',
     start_url: '/',
     display: 'standalone',
     background_color: '#f8fafc',

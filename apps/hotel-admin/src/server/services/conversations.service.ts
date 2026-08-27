@@ -10,7 +10,7 @@ const CONVERSATION_INCLUDE = {
 } as const
 
 /**
- * Front Office (formerly Reception PRD) §17 — hotel-wide, no department split (any Front Office user
+ * Reception PRD §17 — hotel-wide, no department split (any Reception user
  * may open/reply to any conversation in their hotel). "Unread" isn't a
  * stored field (no read-state anywhere in this schema, matching the
  * project's computed-alert convention) — approximated as "the most recent
@@ -44,9 +44,9 @@ export async function getConversation(hotelId: string, conversationId: string) {
     orderBy: { sent_at: 'asc' },
   })
 
-  // Front Office (formerly Reception PRD) §18 — "where possible, connect guest conversations to
+  // Reception PRD §18 — "where possible, connect guest conversations to
   // requests": a read-only cross-reference, not an auto-link. Shows recent
-  // open work for the same room so Front Office can decide whether to raise a
+  // open work for the same room so Reception can decide whether to raise a
   // new request from this conversation, without inventing a join table.
   const relatedRequests = conversation.room_id
     ? await prisma.requests.findMany({
@@ -72,7 +72,7 @@ export async function replyToConversation(hotelId: string, conversationId: strin
     },
   })
 
-  // Reopens a conversation the guest had (or Front Office had) marked closed —
+  // Reopens a conversation the guest had (or Reception had) marked closed —
   // a reply always means the thread is active again.
   if (conversation.status === 'closed') {
     await prisma.conversations.update({ where: { conversation_id: conversation.conversation_id }, data: { status: 'open', closed_at: null } })

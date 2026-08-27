@@ -76,8 +76,8 @@ class Ringtone {
 /**
  * Mounted once at the hotel portal layout level (hotel/layout.tsx), for
  * both the desktop browser and the Capacitor-wrapped native shell — not
- * only MobileShell, since desktop Front Office also needs to receive calls.
- * `enabled` is Front-Office-role only, mirroring who apps/guest's
+ * only MobileShell, since desktop Reception also needs to receive calls.
+ * `enabled` is Reception-role only, mirroring who apps/guest's
  * startVoiceCall actually invites — a guest call rings the front desk and
  * nowhere else, so every other role (including hotel_admin) never touches
  * ZegoCloud at all.
@@ -97,7 +97,7 @@ class Ringtone {
  * The SDK is a multi-MB WebRTC bundle, loaded via dynamic import() rather
  * than a static one — this component is mounted for every /hotel/* page
  * (layout-level), and a static import would ship that bundle to every
- * staff role, not just the Front Office/admin users who ever use it.
+ * staff role, not just the Reception/admin users who ever use it.
  */
 export function VoiceCallListener({ enabled }: { enabled: boolean }) {
   // Zego's callID and call_logs.zego_room_id are the same value (the guest
@@ -208,7 +208,7 @@ export function VoiceCallListener({ enabled }: { enabled: boolean }) {
         // TODO: token TTL is 1h (voice-call.service.ts's LISTENER_TOKEN_TTL_SECONDS).
         // ZegoUIKitPrebuilt.renewToken()'s exact re-fetch contract needs
         // confirming against a live project before relying on it; for now
-        // this only logs so a long-open Front Office tab doesn't fail silently.
+        // this only logs so a long-open Reception tab doesn't fail silently.
         onTokenWillExpire: () => {
           console.warn('[voice-call] listener token is about to expire — not yet renewed automatically')
         },
@@ -237,7 +237,7 @@ export function VoiceCallListener({ enabled }: { enabled: boolean }) {
             <span className="font-semibold text-slate-900">
               {incomingCall.roomNumber ? `Room ${incomingCall.roomNumber}` : 'A guest'}
             </span>{' '}
-            is calling Front Office
+            is calling Reception
           </p>
           {incomingCall.guestName && <p className="mt-0.5 text-xs text-slate-500">{incomingCall.guestName}</p>}
         </div>

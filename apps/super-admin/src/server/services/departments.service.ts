@@ -1,6 +1,6 @@
 import { prisma } from '@/server/db'
 import { recordAudit } from '@/server/audit'
-import { ForbiddenError, type SessionUser } from '@/server/rbac'
+import type { SessionUser } from '@/server/rbac'
 import { DEFAULT_DEPARTMENT_TEMPLATES, type AddDepartmentInput } from '@/server/validation/department.schema'
 
 export async function listDepartments(hotelId: string) {
@@ -17,10 +17,6 @@ export async function listDepartments(hotelId: string) {
 }
 
 export async function addDepartment(hotelId: string, data: AddDepartmentInput, actor: SessionUser) {
-  if (data.name.trim() === 'Front Office') {
-    throw new ForbiddenError('Front Office already exists for every hotel and cannot be created again')
-  }
-
   const department = await prisma.departments.create({
     data: {
       hotel_id: hotelId,

@@ -6,7 +6,7 @@ export type HotelAction = 'view' | 'create' | 'edit' | 'delete'
 
 /**
  * hotel_admin can do everything within their own hotel — hotel_id scoping is
- * enforced by the caller on every query, not here. hotel_staff (Front Office,
+ * enforced by the caller on every query, not here. hotel_staff (Reception,
  * Department Manager, Department Staff) are scoped by their hotel-scoped
  * roles/role_permissions row (same tables the Super Admin portal uses for
  * support_staff — this app just has its own HOTEL_MODULES list).

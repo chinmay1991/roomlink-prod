@@ -9,9 +9,6 @@ const MAX_CALLS_PER_HOUR = 5
 const CALL_WINDOW_MS = 60 * 60 * 1000
 const TOKEN_TTL_SECONDS = 600
 
-/** Kept in sync with apps/hotel-admin's FRONT_OFFICE_ROLE_NAMES (src/lib/permissions.ts) — the two apps don't share a module, so this list is duplicated deliberately, same as the rest of this app's RBAC. */
-const FRONT_OFFICE_ROLE_NAMES = ['Front Office Manager', 'Front Office Staff']
-
 export function guestZegoUserId(sessionId: string): string {
   return shortZegoId('g', sessionId)
 }
@@ -22,8 +19,8 @@ export function staffZegoUserId(userId: string): string {
 }
 
 /**
- * Starts a call attempt: rings every Front-Office-role staff user at this
- * hotel at once — deliberately Front Office only, not hotel_admin or any
+ * Starts a call attempt: rings every Reception-role staff user at this
+ * hotel at once — deliberately Reception only, not hotel_admin or any
  * other role, so a guest call rings the front desk and nowhere else (v1
  * has no "on duty" concept — see the voice calling plan), first to accept
  * in the client gets it. Rate-limited per guest session the same way
@@ -40,12 +37,12 @@ export async function startVoiceCall(ctx: GuestSessionContext) {
     throw new RateLimitedError(Math.ceil(CALL_WINDOW_MS / 1000))
   }
 
-  const [frontOfficeStaff, session] = await Promise.all([
+  const [receptionStaff, session] = await Promise.all([
     prisma.users.findMany({
       where: {
         hotel_id: ctx.hotelId,
         status: 'active',
-        roles: { name: { in: FRONT_OFFICE_ROLE_NAMES } },
+        roles: { name: 'Reception' },
       },
       select: { user_id: true },
     }),
@@ -96,7 +93,7 @@ export async function startVoiceCall(ctx: GuestSessionContext) {
     roomId: zegoRoomId,
     roomNumber,
     guestName,
-    calleeIds: frontOfficeStaff.map((u) => staffZegoUserId(u.user_id)),
+    calleeIds: receptionStaff.map((u) => staffZegoUserId(u.user_id)),
   }
 }
 
@@ -104,7 +101,7 @@ export async function startVoiceCall(ctx: GuestSessionContext) {
  * Guest-initiated hangup. Resolves to 'missed' if no one had answered yet
  * (distinct from 'ended', which means a staff member was actually on the
  * call) — that distinction is the whole point of call_logs existing, so
- * Front Office's dashboard can show missed calls. Idempotent: calling this
+ * Reception's dashboard can show missed calls. Idempotent: calling this
  * again on an already-terminal call log is a silent no-op.
  */
 export async function endVoiceCall(ctx: GuestSessionContext, callLogId: string) {

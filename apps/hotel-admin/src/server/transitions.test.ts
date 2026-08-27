@@ -3,7 +3,7 @@ import { REQUEST_TRANSITIONS, canTransition } from './transitions'
 
 describe('request status transitions (PRD §17)', () => {
   it('follows pending -> assigned handling is done via assignRequest, not a status transition', () => {
-    // pending -> in_progress is allowed directly (Front Office/manager can start work without a
+    // pending -> in_progress is allowed directly (Reception/manager can start work without a
     // separate "assigned" step if they're doing it themselves)
     expect(canTransition(REQUEST_TRANSITIONS, 'pending', 'in_progress')).toBe(true)
   })

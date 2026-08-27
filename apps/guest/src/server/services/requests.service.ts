@@ -14,7 +14,7 @@ const REQUEST_INCLUDE = {
  * to this hotel (and be currently requestable) before use, same
  * "cross-tenant FK validation" discipline apps/hotel-admin already applies
  * everywhere a client sends an id. Quantity/note fold into `notes` — there's
- * no dedicated quantity column on `requests` (matches how Front Office's own
+ * no dedicated quantity column on `requests` (matches how Reception's own
  * request-creation form already works, PRD §12's own worked example is a
  * request title + a free-text note).
  */

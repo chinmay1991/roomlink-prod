@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 /**
- * Front Office (formerly Reception PRD) §27 — "if realtime infrastructure is not yet implemented,
+ * Reception PRD §27 — "if realtime infrastructure is not yet implemented,
  * implement the minimum reliable polling/fetch strategy for V1." No
  * websocket/SSE infra exists anywhere in this codebase, so this is exactly
  * that minimum: re-run the page's server-side data fetch on an interval.

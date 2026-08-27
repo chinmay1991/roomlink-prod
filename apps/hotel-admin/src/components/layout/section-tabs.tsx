@@ -15,7 +15,7 @@ const SECTIONS = {
   people: [
     { href: '/hotel/staff', label: 'Staff' },
     { href: '/hotel/managers', label: 'Department Managers' },
-    { href: '/hotel/front-office', label: 'Front Office' },
+    { href: '/hotel/reception', label: 'Reception' },
   ],
   'guest-services': [
     { href: '/hotel/services', label: 'Services' },

@@ -54,7 +54,7 @@ export async function getGuestNotifications(ctx: GuestSessionContext): Promise<G
       take: 10,
     })
     for (const m of staffMessages) {
-      notifications.push({ id: `msg-${m.message_id}`, message: `Front Office: ${m.content}`, createdAt: m.sent_at })
+      notifications.push({ id: `msg-${m.message_id}`, message: `Reception: ${m.content}`, createdAt: m.sent_at })
     }
   }
 

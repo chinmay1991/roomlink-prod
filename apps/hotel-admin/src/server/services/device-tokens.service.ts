@@ -1,5 +1,4 @@
 import { prisma } from '@/server/db'
-import { FRONT_OFFICE_ROLE_NAMES } from '@/lib/permissions'
 import type { RegisterDeviceTokenInput } from '@/server/validation/device-token.schema'
 import type { HotelSessionUser } from '@/server/require-hotel-session'
 
@@ -24,20 +23,20 @@ export async function unregisterDeviceToken(userId: string, token: string) {
 
 /**
  * The targeting unit escalateRequest's push needs: `recipient` mirrors
- * EscalateRequestInput's own 'gm' | 'front_office' choice exactly. 'gm' is
+ * EscalateRequestInput's own 'gm' | 'reception' choice exactly. 'gm' is
  * userType-based (like hotel-rbac.ts's canHotel), not roleName-based —
  * hotel_admin users bypass the roles/role_permissions system entirely, so
  * their roles.name isn't a reliable "is this the GM" check the way
- * FRONT_OFFICE_ROLE_NAMES membership is for Front Office.
+ * roleName === 'Reception' is for that role.
  */
 export async function getDeviceTokensForRecipient(
   hotelId: string,
-  recipient: 'gm' | 'front_office'
+  recipient: 'gm' | 'reception'
 ): Promise<{ token: string; platform: string }[]> {
   return prisma.device_tokens.findMany({
     where: {
       hotel_id: hotelId,
-      users: recipient === 'gm' ? { user_type: 'hotel_admin' } : { roles: { name: { in: [...FRONT_OFFICE_ROLE_NAMES] } } },
+      users: recipient === 'gm' ? { user_type: 'hotel_admin' } : { roles: { name: 'Reception' } },
     },
     select: { token: true, platform: true },
   })

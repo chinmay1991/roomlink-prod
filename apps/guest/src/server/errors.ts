@@ -12,14 +12,14 @@ export class ConfigurationError extends Error {}
  */
 export class MobileMismatchError extends Error {
   constructor() {
-    super('This mobile number is not registered for the active stay in this room. Please contact Front Office.')
+    super('This mobile number is not registered for the active stay in this room. Please contact Reception.')
   }
 }
 
 /** Too many failed mobile-number verification attempts for this room's active stay — locked out until `retryAfterSeconds` elapses. */
 export class RateLimitedError extends Error {
   constructor(public retryAfterSeconds: number) {
-    super('Too many incorrect attempts. Please try again later or contact Front Office.')
+    super('Too many incorrect attempts. Please try again later or contact Reception.')
   }
 }
 

@@ -123,7 +123,7 @@ export async function getDepartmentAlerts(hotelId: string, departmentIds: string
  * scoped to the staff member's own department(s), same as
  * `getDepartmentAlerts`, but pointing at the Staff task list rather than the
  * Manager queue since this role can't reach `/hotel/manager/*`. No
- * escalation alert: escalation is a Manager/Front Office/Hotel Admin action
+ * escalation alert: escalation is a Manager/Reception/Hotel Admin action
  * (Staff PRD §14 — staff don't reassign/escalate, only accept/work/note).
  */
 export async function getStaffAlerts(hotelId: string, departmentIds: string[]): Promise<Alert[]> {

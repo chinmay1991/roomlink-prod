@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@roomlink/ui'
 
 /**
- * Shared prev/numbered/next pager — originally the Front Office Dashboard's
+ * Shared prev/numbered/next pager — originally the Reception Dashboard's
  * per-floor pager, extracted once building-then-floor grouping meant
  * multiple screens each needed two of these stacked (a building pager above
  * a floor pager). `min-w-10` (not a fixed width) so it still looks like a
