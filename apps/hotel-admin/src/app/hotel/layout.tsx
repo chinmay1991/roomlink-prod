@@ -5,6 +5,7 @@ import { Topbar } from '@/components/layout/topbar'
 import { StaffBottomNav } from '@/components/layout/staff-bottom-nav'
 import { MobileShell } from '@/components/layout/mobile-shell'
 import { VoiceCallListener } from '@/components/layout/voice-call-listener'
+import { ReceptionAlertListener } from '@/components/layout/reception-alert-listener'
 
 export default async function HotelPortalLayout({ children }: { children: React.ReactNode }) {
   // hotelName comes off the session (set at login), not a fresh DB lookup —
@@ -27,10 +28,16 @@ export default async function HotelPortalLayout({ children }: { children: React.
   // connection for invitations that will never arrive.
   const canReceiveVoiceCalls = session.user.roleName === 'Reception'
 
+  // Same gate as requireReceptionOrAdmin (reception.service.ts) — hotel-wide
+  // new-request/new-message alerts belong to whoever can already see the
+  // hotel-wide Reception dashboard, not just the Reception role.
+  const canReceiveReceptionAlerts = session.user.userType === 'hotel_admin' || session.user.roleName === 'Reception'
+
   if (isNativeClient()) {
     return (
       <>
         <VoiceCallListener enabled={canReceiveVoiceCalls} />
+        <ReceptionAlertListener enabled={canReceiveReceptionAlerts} />
         <MobileShell roleName={session.user.roleName}>{children}</MobileShell>
       </>
     )
@@ -39,6 +46,7 @@ export default async function HotelPortalLayout({ children }: { children: React.
   return (
     <div className="flex min-h-screen bg-slate-50">
       <VoiceCallListener enabled={canReceiveVoiceCalls} />
+      <ReceptionAlertListener enabled={canReceiveReceptionAlerts} />
       <Sidebar />
       <div className="flex flex-1 flex-col">
         <Topbar hotelName={session.user.hotelName} />

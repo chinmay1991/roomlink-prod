@@ -67,3 +67,23 @@ export async function getGuestConversation(ctx: GuestSessionContext) {
 
   return { conversation, messages }
 }
+
+/**
+ * Backs the layout-level chat sound/banner alert, mirroring hotel-admin's
+ * reception-alert-listener/getNewestRequestSignal. Deliberately cheap — this
+ * polls far more often than a normal page load — and returns the newest
+ * staff-sent message's id (not just "has unread"), so a listener can detect
+ * a fresh reply even if it's not the first one it's ever seen.
+ */
+export async function getNewestStaffMessageSignal(ctx: GuestSessionContext) {
+  const conversation = await prisma.conversations.findFirst({ where: { guest_session_id: ctx.sessionId } })
+  if (!conversation) return { latestStaffMessageId: null, preview: null }
+
+  const latest = await prisma.messages.findFirst({
+    where: { conversation_id: conversation.conversation_id, sender_type: 'staff' },
+    orderBy: { sent_at: 'desc' },
+    select: { message_id: true, content: true },
+  })
+
+  return { latestStaffMessageId: latest?.message_id ?? null, preview: latest?.content ?? null }
+}

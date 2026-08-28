@@ -205,6 +205,53 @@ export async function getRoomOverview(hotelId: string, actor: HotelSessionUser) 
   }))
 }
 
+/**
+ * Backs the layout-level new-request/new-message sound alert (foreground-
+ * only, mirrors the voice-call listener's own tradeoff). Deliberately cheap
+ * — this polls far more often than the 20s dashboard refresh — and returns
+ * the single newest row of each kind (by timestamp, any status) rather than
+ * a count: a count alone can miss an arrival that changes state between two
+ * polls (e.g. new + assigned cancel out), while the newest row's id changes
+ * on every insert regardless of what happens to it after.
+ */
+export async function getNewestRequestSignal(hotelId: string, actor: HotelSessionUser) {
+  requireReceptionOrAdmin(actor)
+  const [latestRequest, latestGuestMessage] = await Promise.all([
+    prisma.requests.findFirst({
+      where: { hotel_id: hotelId },
+      orderBy: { created_at: 'desc' },
+      select: {
+        request_id: true,
+        request_type: true,
+        priority: true,
+        rooms: { select: { room_number: true } },
+      },
+    }),
+    // Same "unread" convention as listConversations (conversations.service.ts):
+    // no read-state field in the schema, so the newest guest-sent message
+    // across the hotel's conversations stands in for "a guest chat needs attention".
+    prisma.messages.findFirst({
+      where: { sender_type: 'guest', conversations: { hotel_id: hotelId } },
+      orderBy: { sent_at: 'desc' },
+      select: {
+        message_id: true,
+        conversation_id: true,
+        conversations: { select: { rooms: { select: { room_number: true } } } },
+      },
+    }),
+  ])
+
+  return {
+    latestRequestId: latestRequest?.request_id ?? null,
+    requestType: latestRequest?.request_type ?? null,
+    priority: latestRequest?.priority ?? null,
+    roomNumber: latestRequest?.rooms?.room_number ?? null,
+    latestGuestMessageId: latestGuestMessage?.message_id ?? null,
+    latestGuestMessageConversationId: latestGuestMessage?.conversation_id ?? null,
+    latestGuestMessageRoomNumber: latestGuestMessage?.conversations.rooms?.room_number ?? null,
+  }
+}
+
 /** Reception PRD §19 — search by room number / guest name / stay id / request id. Minimal fields only. */
 export async function searchGuests(hotelId: string, query: string, actor: HotelSessionUser) {
   requireReceptionOrAdmin(actor)
