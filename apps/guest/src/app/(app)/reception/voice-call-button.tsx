@@ -101,15 +101,15 @@ export function VoiceCallButton() {
     zp.addPlugins({ ZIM })
 
     zp.setCallInvitationConfig({
-      // Undocumented SDK coupling (traced in the shipped
-      // zego-uikit-prebuilt bundle, v2.18.2): when a participant hangs up
-      // mid-call, the local endCall(LeaveRoom) handler only sends the ZIM
-      // callEnd/callQuit signal that notifies the other side if
-      // canInvitingInCalling is true. Without it, hanging up only tears
-      // down the local UI — the other party's call never ends. Neither app
-      // exposes any in-call "invite more people" UI, so this flag's
-      // documented purpose (allowing mid-call invitations) has no visible
-      // effect here; it's set purely to unlock the hangup-propagation path.
+      // Kept for ZIM "Advanced mode" messaging (needed elsewhere in the
+      // call-invitation payload format) — NOT what makes hangups propagate.
+      // Traced in the shipped zego-uikit-prebuilt bundle (v2.18.2):
+      // endCall(LeaveRoom) only broadcasts a call-ending ZIM signal
+      // (callEnd) when the *initiator* leaves AND endCallWhenInitiatorLeave
+      // is set; a callee's leave always sends callQuit, which the other
+      // party's call-invitation listeners never surface as "ended". So this
+      // flag alone does not fix same-call hangup propagation in either
+      // direction — see onUserLeave below, which is what actually does.
       canInvitingInCalling: true,
       onOutgoingCallAccepted: () => setState('connected'),
       onOutgoingCallRejected: () => {
@@ -133,6 +133,13 @@ export function VoiceCallButton() {
         showScreenSharingButton: false,
         showTextChat: false,
         showUserList: false,
+        // Room-presence level, not call-invitation level: fires whenever
+        // Reception's client actually drops out of the WebRTC room, whether
+        // they tapped hang-up or their connection just died. This is what
+        // reliably ends the call on our side too — see the
+        // canInvitingInCalling comment above for why the ZIM invitation
+        // signal alone can't be relied on for this.
+        onUserLeave: () => endCall(),
       }),
     })
 

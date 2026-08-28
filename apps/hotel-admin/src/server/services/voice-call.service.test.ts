@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ForbiddenError } from '@/server/hotel-rbac'
 import { InvalidTransitionError } from '@/server/errors'
-import { getStaffVoiceCallToken, answerVoiceCall, declineVoiceCall, listCallLogs, staffZegoUserId } from './voice-call.service'
+import { getStaffVoiceCallToken, answerVoiceCall, declineVoiceCall, endVoiceCall, listCallLogs, staffZegoUserId } from './voice-call.service'
 
 const mockPrisma = vi.hoisted(() => ({
   call_logs: { findFirstOrThrow: vi.fn(), update: vi.fn(), findMany: vi.fn() },
@@ -83,6 +83,33 @@ describe('declineVoiceCall', () => {
     mockPrisma.call_logs.findFirstOrThrow.mockResolvedValue({ call_log_id: 'call-1', status: 'ringing', zego_room_id: 'room-1' })
 
     await declineVoiceCall(RECEPTION, 'room-1')
+
+    expect(mockPrisma.call_logs.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('endVoiceCall', () => {
+  it('rejects non-Reception, non-admin staff before touching the DB', async () => {
+    await expect(endVoiceCall(DEPT_STAFF, 'room-1')).rejects.toThrow(ForbiddenError)
+    expect(mockPrisma.call_logs.findFirstOrThrow).not.toHaveBeenCalled()
+  })
+
+  it('ends an answered call', async () => {
+    mockPrisma.call_logs.findFirstOrThrow.mockResolvedValue({ call_log_id: 'call-1', status: 'answered', zego_room_id: 'room-1' })
+    mockPrisma.call_logs.update.mockResolvedValue({ call_log_id: 'call-1', status: 'ended', zego_room_id: 'room-1' })
+
+    await endVoiceCall(RECEPTION, 'room-1')
+
+    expect(mockPrisma.call_logs.update).toHaveBeenCalledWith({
+      where: { call_log_id: 'call-1' },
+      data: expect.objectContaining({ status: 'ended' }),
+    })
+  })
+
+  it('is a no-op on a call that was never answered or already ended, so a duplicate/late hangup signal (e.g. both parties leaving at once) never clobbers status', async () => {
+    mockPrisma.call_logs.findFirstOrThrow.mockResolvedValue({ call_log_id: 'call-1', status: 'ringing', zego_room_id: 'room-1' })
+
+    await endVoiceCall(RECEPTION, 'room-1')
 
     expect(mockPrisma.call_logs.update).not.toHaveBeenCalled()
   })

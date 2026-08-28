@@ -69,6 +69,31 @@ export async function answerVoiceCall(actor: HotelSessionUser, zegoRoomId: strin
 }
 
 /**
+ * Reception-initiated hangup, or the server-side echo of the guest having
+ * disconnected (voice-call-listener.tsx's onUserLeave/onLeaveRoom room
+ * callbacks call this in both cases — see the comment there for why the
+ * call-invitation layer alone can't be trusted to catch a callee hangup or a
+ * dropped connection). Idempotent, mirroring apps/guest's endVoiceCall: only
+ * an 'answered' call can be 'ended' here, so a late/duplicate call is a
+ * silent no-op instead of clobbering a status another path already set.
+ */
+export async function endVoiceCall(actor: HotelSessionUser, zegoRoomId: string) {
+  requireReceptionOrAdmin(actor)
+  const callLog = await prisma.call_logs.findFirstOrThrow({
+    where: { zego_room_id: zegoRoomId, hotel_id: actor.hotelId },
+  })
+
+  if (callLog.status !== 'answered') {
+    return callLog
+  }
+
+  return prisma.call_logs.update({
+    where: { call_log_id: callLog.call_log_id },
+    data: { status: 'ended', ended_at: new Date() },
+  })
+}
+
+/**
  * Best-effort signal only — deliberately does NOT change the shared
  * call_logs row. Every Reception/admin user at the hotel is rung
  * simultaneously (v1 has no "on duty" concept — see the voice calling
