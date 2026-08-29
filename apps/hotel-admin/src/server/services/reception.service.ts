@@ -52,12 +52,12 @@ export async function getReceptionDashboard(hotelId: string, actor: HotelSession
         (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND status = 'pending')::int AS unassigned,
         (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND status = 'in_progress')::int AS in_progress,
         (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND status = 'escalated')::int AS escalated,
-        (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND priority IN ('high', 'urgent') AND status IN ('pending', 'assigned', 'in_progress'))::int AS high_priority,
+        (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND priority IN ('high', 'urgent') AND status IN ('pending', 'pending_acceptance', 'assigned', 'in_progress'))::int AS high_priority,
         (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND status = 'completed' AND completed_at >= ${today})::int AS completed_today,
         (SELECT COUNT(*) FROM guest_sessions WHERE hotel_id = ${hotelId}::uuid AND status = 'active')::int AS guests_in_house
     `,
     prisma.requests.findMany({
-      where: { hotel_id: hotelId, status: { in: ['pending', 'assigned', 'in_progress'] } },
+      where: { hotel_id: hotelId, status: { in: ['pending', 'pending_acceptance', 'assigned', 'in_progress'] } },
       select: { priority: true, created_at: true },
     }),
     prisma.conversations.findMany({
@@ -114,7 +114,7 @@ export async function getDepartmentMonitoring(hotelId: string, actor: HotelSessi
       _count: true,
     }),
     prisma.requests.findMany({
-      where: { hotel_id: hotelId, department_id: { in: departmentIds }, status: { in: ['pending', 'assigned', 'in_progress'] } },
+      where: { hotel_id: hotelId, department_id: { in: departmentIds }, status: { in: ['pending', 'pending_acceptance', 'assigned', 'in_progress'] } },
       select: { department_id: true, priority: true, created_at: true },
     }),
   ])
@@ -158,7 +158,7 @@ export async function getStaffStatus(hotelId: string, actor: HotelSessionUser) {
       full_name: true,
       status: true,
       user_departments: { include: { departments: { select: { name: true } } } },
-      requests: { where: { status: { in: ['assigned', 'in_progress'] } }, select: { request_id: true } },
+      requests: { where: { status: { in: ['pending_acceptance', 'assigned', 'in_progress'] } }, select: { request_id: true } },
     },
     orderBy: { full_name: 'asc' },
   })
@@ -187,7 +187,7 @@ export async function getRoomOverview(hotelId: string, actor: HotelSessionUser) 
         orderBy: { issued_at: 'desc' },
         include: { guests: { select: { full_name: true } } },
       },
-      requests: { where: { status: { in: ['pending', 'assigned', 'in_progress', 'escalated'] } }, select: { request_id: true } },
+      requests: { where: { status: { in: ['pending', 'pending_acceptance', 'assigned', 'in_progress', 'escalated'] } }, select: { request_id: true } },
     },
   })
 
@@ -206,17 +206,26 @@ export async function getRoomOverview(hotelId: string, actor: HotelSessionUser) 
 }
 
 /**
- * Backs the layout-level new-request/new-message sound alert (foreground-
- * only, mirrors the voice-call listener's own tradeoff). Deliberately cheap
- * — this polls far more often than the 20s dashboard refresh — and returns
- * the single newest row of each kind (by timestamp, any status) rather than
- * a count: a count alone can miss an arrival that changes state between two
- * polls (e.g. new + assigned cancel out), while the newest row's id changes
- * on every insert regardless of what happens to it after.
+ * Backs the layout-level new-request/new-message/staff-activity sound alert
+ * (foreground-only, mirrors the voice-call listener's own tradeoff).
+ * Deliberately cheap — this polls far more often than the 20s dashboard
+ * refresh — and returns the single newest row of each kind (by timestamp,
+ * any status) rather than a count: a count alone can miss an arrival that
+ * changes state between two polls (e.g. new + assigned cancel out), while
+ * the newest row's id changes on every insert regardless of what happens to
+ * it after.
+ *
+ * `latestStaffActivity` is the newest request_status_history row authored
+ * by a Department Manager/Staff — i.e. something reception didn't just do
+ * themselves — across the hotel: an assignment accepted/rejected, or a
+ * status change (started/completed/etc.) on any request. Scoped by role
+ * name rather than a "changed by someone other than me" check, since
+ * several reception users can be logged in at once and each should still
+ * see the alert for actions taken by staff, but never for reception's own.
  */
 export async function getNewestRequestSignal(hotelId: string, actor: HotelSessionUser) {
   requireReceptionOrAdmin(actor)
-  const [latestRequest, latestGuestMessage] = await Promise.all([
+  const [latestRequest, latestGuestMessage, latestStaffActivity] = await Promise.all([
     prisma.requests.findFirst({
       where: { hotel_id: hotelId },
       orderBy: { created_at: 'desc' },
@@ -239,6 +248,20 @@ export async function getNewestRequestSignal(hotelId: string, actor: HotelSessio
         conversations: { select: { rooms: { select: { room_number: true } } } },
       },
     }),
+    prisma.request_status_history.findFirst({
+      where: {
+        requests: { hotel_id: hotelId },
+        users_request_status_history_changed_byTousers: { roles: { name: { in: ['Department Manager', 'Department Staff'] } } },
+      },
+      orderBy: { changed_at: 'desc' },
+      select: {
+        history_id: true,
+        from_status: true,
+        to_status: true,
+        requests: { select: { request_type: true, rooms: { select: { room_number: true } } } },
+        users_request_status_history_changed_byTousers: { select: { full_name: true } },
+      },
+    }),
   ])
 
   return {
@@ -249,6 +272,12 @@ export async function getNewestRequestSignal(hotelId: string, actor: HotelSessio
     latestGuestMessageId: latestGuestMessage?.message_id ?? null,
     latestGuestMessageConversationId: latestGuestMessage?.conversation_id ?? null,
     latestGuestMessageRoomNumber: latestGuestMessage?.conversations.rooms?.room_number ?? null,
+    latestStaffActivityId: latestStaffActivity?.history_id ?? null,
+    staffActivityFromStatus: latestStaffActivity?.from_status ?? null,
+    staffActivityToStatus: latestStaffActivity?.to_status ?? null,
+    staffActivityRequestType: latestStaffActivity?.requests.request_type ?? null,
+    staffActivityRoomNumber: latestStaffActivity?.requests.rooms?.room_number ?? null,
+    staffActivityStaffName: latestStaffActivity?.users_request_status_history_changed_byTousers?.full_name ?? null,
   }
 }
 

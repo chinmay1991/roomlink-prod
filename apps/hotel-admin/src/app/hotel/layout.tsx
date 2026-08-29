@@ -6,6 +6,7 @@ import { StaffBottomNav } from '@/components/layout/staff-bottom-nav'
 import { MobileShell } from '@/components/layout/mobile-shell'
 import { VoiceCallListener } from '@/components/layout/voice-call-listener'
 import { ReceptionAlertListener } from '@/components/layout/reception-alert-listener'
+import { AssignmentAlertListener } from '@/components/layout/assignment-alert-listener'
 
 export default async function HotelPortalLayout({ children }: { children: React.ReactNode }) {
   // hotelName comes off the session (set at login), not a fresh DB lookup —
@@ -33,11 +34,18 @@ export default async function HotelPortalLayout({ children }: { children: React.
   // hotel-wide Reception dashboard, not just the Reception role.
   const canReceiveReceptionAlerts = session.user.userType === 'hotel_admin' || session.user.roleName === 'Reception'
 
+  // The only two roles a request can ever be assigned to (assignRequest's
+  // eligibility check is `user_departments` membership, which only
+  // Department Manager/Staff hold) — hotel_admin/Reception assign work, they
+  // don't receive it.
+  const canReceiveAssignmentAlerts = session.user.roleName === 'Department Manager' || session.user.roleName === 'Department Staff'
+
   if (isNativeClient()) {
     return (
       <>
         <VoiceCallListener enabled={canReceiveVoiceCalls} />
         <ReceptionAlertListener enabled={canReceiveReceptionAlerts} />
+        <AssignmentAlertListener enabled={canReceiveAssignmentAlerts} />
         <MobileShell roleName={session.user.roleName}>{children}</MobileShell>
       </>
     )
@@ -47,6 +55,7 @@ export default async function HotelPortalLayout({ children }: { children: React.
     <div className="flex min-h-screen bg-slate-50">
       <VoiceCallListener enabled={canReceiveVoiceCalls} />
       <ReceptionAlertListener enabled={canReceiveReceptionAlerts} />
+      <AssignmentAlertListener enabled={canReceiveAssignmentAlerts} />
       <Sidebar />
       <div className="flex flex-1 flex-col">
         <Topbar hotelName={session.user.hotelName} />

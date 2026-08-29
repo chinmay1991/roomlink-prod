@@ -21,6 +21,7 @@ export type StaffRequestRow = {
 const STATUS_FILTERS = [
   { value: '', label: 'All' },
   { value: 'pending', label: 'New' },
+  { value: 'pending_acceptance', label: 'Awaiting your response' },
   { value: 'assigned', label: 'Assigned' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'completed', label: 'Completed' },
@@ -71,6 +72,8 @@ export function StaffTaskList({
   const [deptFilter, setDeptFilter] = useState(initialDeptFilter)
   const [completeFor, setCompleteFor] = useState<string | null>(null)
   const [completeNote, setCompleteNote] = useState('')
+  const [rejectFor, setRejectFor] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   async function runAction(requestId: string, run: () => Promise<Response>) {
@@ -88,6 +91,24 @@ export function StaffTaskList({
 
   function accept(requestId: string) {
     return runAction(requestId, () => fetch(`/api/v1/hotel/requests/${requestId}/accept`, { method: 'POST' }))
+  }
+
+  function acceptAssignment(requestId: string) {
+    return runAction(requestId, () => fetch(`/api/v1/hotel/requests/${requestId}/assignment/accept`, { method: 'POST' }))
+  }
+
+  async function submitRejectAssignment() {
+    if (!rejectFor) return
+    const requestId = rejectFor
+    await runAction(requestId, () =>
+      fetch(`/api/v1/hotel/requests/${requestId}/assignment/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: rejectReason.trim() || undefined }),
+      })
+    )
+    setRejectFor(null)
+    setRejectReason('')
   }
 
   function start(requestId: string) {
@@ -182,6 +203,24 @@ export function StaffTaskList({
                   {busy ? 'Accepting…' : 'Accept Task'}
                 </Button>
               )}
+              {isMine && r.status === 'pending_acceptance' && (
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    variant="secondary"
+                    className="flex-1"
+                    disabled={busy}
+                    onClick={() => {
+                      setRejectFor(r.request_id)
+                      setRejectReason('')
+                    }}
+                  >
+                    Reject
+                  </Button>
+                  <Button className="flex-1" disabled={busy} onClick={() => acceptAssignment(r.request_id)}>
+                    {busy ? 'Accepting…' : 'Accept'}
+                  </Button>
+                </div>
+              )}
               {isMine && r.status === 'assigned' && (
                 <Button className="mt-3 w-full" disabled={busy} onClick={() => start(r.request_id)}>
                   {busy ? 'Starting…' : 'Start Task'}
@@ -229,6 +268,40 @@ export function StaffTaskList({
               </Button>
               <Button disabled={busyId === completeFor} onClick={submitComplete}>
                 Mark Completed
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {rejectFor && (
+        <Modal
+          title="Reject assignment"
+          onClose={() => {
+            setRejectFor(null)
+            setRejectReason('')
+          }}
+        >
+          <div className="space-y-3">
+            <p className="text-sm text-slate-600">This sends the request back to reception, unassigned, so it can be routed to someone else.</p>
+            <Textarea
+              rows={3}
+              placeholder="Why can't you take this on? (optional)"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setRejectFor(null)
+                  setRejectReason('')
+                }}
+              >
+                Cancel
+              </Button>
+              <Button variant="danger" disabled={busyId === rejectFor} onClick={submitRejectAssignment}>
+                Reject
               </Button>
             </div>
           </div>

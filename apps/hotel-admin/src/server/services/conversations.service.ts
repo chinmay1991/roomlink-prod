@@ -50,7 +50,7 @@ export async function getConversation(hotelId: string, conversationId: string) {
   // new request from this conversation, without inventing a join table.
   const relatedRequests = conversation.room_id
     ? await prisma.requests.findMany({
-        where: { hotel_id: hotelId, room_id: conversation.room_id, status: { in: ['pending', 'assigned', 'in_progress', 'escalated'] } },
+        where: { hotel_id: hotelId, room_id: conversation.room_id, status: { in: ['pending', 'pending_acceptance', 'assigned', 'in_progress', 'escalated'] } },
         include: { departments: { select: { name: true } } },
         orderBy: { created_at: 'desc' },
         take: 5,

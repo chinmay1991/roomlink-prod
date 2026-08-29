@@ -32,7 +32,7 @@ type SortBy = 'oldest' | 'newest' | 'priority' | 'sla'
 
 const PRIORITY_RANK: Record<string, number> = { urgent: 3, high: 2, normal: 1 }
 const SLA_RISK_MINUTES: Record<string, number> = { urgent: 15, high: 30, normal: 60 }
-const OPEN_STATUSES = new Set(['pending', 'assigned', 'in_progress', 'escalated'])
+const OPEN_STATUSES = new Set(['pending', 'pending_acceptance', 'assigned', 'in_progress', 'escalated'])
 
 function elapsedMinutes(createdAt: string) {
   return (Date.now() - new Date(createdAt).getTime()) / 60000
@@ -234,6 +234,7 @@ export function RequestsBoard({
     { value: '', label: 'All' },
     { value: 'pending', label: 'New' },
     { value: '__unassigned__', label: 'Unassigned' },
+    { value: 'pending_acceptance', label: 'Awaiting accept' },
     { value: 'in_progress', label: 'In progress' },
     { value: 'escalated', label: 'Escalated' },
     { value: 'completed', label: 'Completed' },
@@ -318,6 +319,7 @@ export function RequestsBoard({
         <Select className="h-9 w-40" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">All statuses</option>
           <option value="pending">New</option>
+          <option value="pending_acceptance">Awaiting acceptance</option>
           <option value="assigned">Assigned</option>
           <option value="in_progress">In progress</option>
           <option value="completed">Completed</option>

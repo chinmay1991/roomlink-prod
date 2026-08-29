@@ -15,6 +15,12 @@ export const assignRequestSchema = z.object({
 })
 export type AssignRequestInput = z.infer<typeof assignRequestSchema>
 
+/** A reason is optional — rejecting is meant to be as fast as declining a call, not a gated exception like cancelling. */
+export const rejectAssignmentSchema = z.object({
+  reason: z.string().trim().max(500).optional().or(z.literal('')),
+})
+export type RejectAssignmentInput = z.infer<typeof rejectAssignmentSchema>
+
 export const updateRequestStatusSchema = z
   .object({
     status: z.enum(['in_progress', 'completed', 'cancelled']),
@@ -42,7 +48,7 @@ export type AddRequestNoteInput = z.infer<typeof addRequestNoteSchema>
 
 export const requestFiltersSchema = z.object({
   departmentId: uuid.optional(),
-  status: z.enum(['pending', 'assigned', 'in_progress', 'completed', 'cancelled', 'escalated']).optional(),
+  status: z.enum(['pending', 'pending_acceptance', 'assigned', 'in_progress', 'completed', 'cancelled', 'escalated']).optional(),
   priority: z.enum(['normal', 'high', 'urgent']).optional(),
   roomId: uuid.optional(),
 })

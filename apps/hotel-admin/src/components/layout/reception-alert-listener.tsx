@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ClipboardList, MessageSquareText, X } from 'lucide-react'
+import { Bell, BellOff, ClipboardList, MessageSquareText, UserCheck, X } from 'lucide-react'
 
 type Signal = {
   latestRequestId: string | null
@@ -12,14 +12,51 @@ type Signal = {
   latestGuestMessageId: string | null
   latestGuestMessageConversationId: string | null
   latestGuestMessageRoomNumber: string | null
+  latestStaffActivityId: string | null
+  staffActivityFromStatus: string | null
+  staffActivityToStatus: string | null
+  staffActivityRequestType: string | null
+  staffActivityRoomNumber: string | null
+  staffActivityStaffName: string | null
 }
 
 type Alert =
   | { kind: 'request'; roomNumber: string | null; requestType: string | null }
   | { kind: 'message'; roomNumber: string | null; conversationId: string }
+  | { kind: 'staff_activity'; roomNumber: string | null; requestType: string | null; staffName: string | null; label: string }
 
 const POLL_INTERVAL_MS = 3000
 const BANNER_AUTO_DISMISS_MS = POLL_INTERVAL_MS
+const SOUND_MUTED_STORAGE_KEY = 'roomlink:reception-alerts-muted'
+
+/** Reception may be juggling a lot of traffic — sound-only mute (the banner itself still shows) is a per-browser preference, not worth a DB round trip for. */
+function readMutedPreference(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return window.localStorage.getItem(SOUND_MUTED_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writeMutedPreference(muted: boolean) {
+  try {
+    window.localStorage.setItem(SOUND_MUTED_STORAGE_KEY, muted ? '1' : '0')
+  } catch {
+    // Best-effort — private browsing / storage-disabled contexts just won't persist the toggle across reloads.
+  }
+}
+
+/** Turns a staff-authored status_history row into the banner's headline verb — the same row can mean "accepted", "rejected", or any later status change (started/completed/cancelled/escalated). */
+function describeStaffActivity(fromStatus: string | null, toStatus: string | null): string {
+  if (fromStatus === 'pending_acceptance' && toStatus === 'assigned') return 'accepted the assignment'
+  if (fromStatus === 'pending_acceptance' && toStatus === 'pending') return 'rejected the assignment'
+  if (toStatus === 'in_progress') return 'started work'
+  if (toStatus === 'completed') return 'completed the request'
+  if (toStatus === 'cancelled') return 'cancelled the request'
+  if (toStatus === 'escalated') return 'escalated the request'
+  return 'updated the request'
+}
 
 async function fetchSignal(): Promise<Signal> {
   const res = await fetch('/api/v1/hotel/reception/live-signal')
@@ -66,8 +103,29 @@ export function ReceptionAlertListener({ enabled }: { enabled: boolean }) {
   const router = useRouter()
   const lastSeenRequestIdRef = useRef<string | null | undefined>(undefined)
   const lastSeenMessageIdRef = useRef<string | null | undefined>(undefined)
+  const lastSeenStaffActivityIdRef = useRef<string | null | undefined>(undefined)
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [alert, setAlert] = useState<Alert | null>(null)
+  const [muted, setMuted] = useState(false)
+  const mutedRef = useRef(false)
+
+  // Read the stored preference after mount (not as useState's initializer)
+  // so the server-rendered and first-client-rendered markup match — this
+  // toggle is purely a client-side, per-browser convenience.
+  useEffect(() => {
+    const stored = readMutedPreference()
+    mutedRef.current = stored
+    setMuted(stored)
+  }, [])
+
+  const toggleMuted = useCallback(() => {
+    setMuted((prev) => {
+      const next = !prev
+      mutedRef.current = next
+      writeMutedPreference(next)
+      return next
+    })
+  }, [])
 
   const dismiss = useCallback(() => {
     if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current)
@@ -81,7 +139,7 @@ export function ReceptionAlertListener({ enabled }: { enabled: boolean }) {
     let cancelled = false
 
     function fire(next: Alert) {
-      playChime()
+      if (!mutedRef.current) playChime()
       setAlert(next)
       if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current)
       dismissTimerRef.current = setTimeout(dismiss, BANNER_AUTO_DISMISS_MS)
@@ -96,21 +154,32 @@ export function ReceptionAlertListener({ enabled }: { enabled: boolean }) {
       if (!signal || cancelled) return
 
       // First poll after mount just establishes a baseline for each signal —
-      // nothing to compare against yet, so neither must alert.
+      // nothing to compare against yet, so none of them must alert.
       const isNewRequest = lastSeenRequestIdRef.current !== undefined && signal.latestRequestId !== lastSeenRequestIdRef.current
       const isNewMessage =
         lastSeenMessageIdRef.current !== undefined && signal.latestGuestMessageId !== lastSeenMessageIdRef.current
+      const isNewStaffActivity =
+        lastSeenStaffActivityIdRef.current !== undefined && signal.latestStaffActivityId !== lastSeenStaffActivityIdRef.current
 
       lastSeenRequestIdRef.current = signal.latestRequestId
       lastSeenMessageIdRef.current = signal.latestGuestMessageId
+      lastSeenStaffActivityIdRef.current = signal.latestStaffActivityId
 
-      // A request arriving takes priority when both change in the same poll
-      // window; the chime already fired either way, and the message will
-      // still be there (and unread) on the next poll if it gets dropped here.
+      // A request arriving takes priority when more than one changes in the
+      // same poll window; the chime already fired either way, and whatever
+      // gets dropped here is still there (and still "new") on the next poll.
       if (isNewRequest) {
         fire({ kind: 'request', roomNumber: signal.roomNumber, requestType: signal.requestType })
       } else if (isNewMessage && signal.latestGuestMessageConversationId) {
         fire({ kind: 'message', roomNumber: signal.latestGuestMessageRoomNumber, conversationId: signal.latestGuestMessageConversationId })
+      } else if (isNewStaffActivity) {
+        fire({
+          kind: 'staff_activity',
+          roomNumber: signal.staffActivityRoomNumber,
+          requestType: signal.staffActivityRequestType,
+          staffName: signal.staffActivityStaffName,
+          label: describeStaffActivity(signal.staffActivityFromStatus, signal.staffActivityToStatus),
+        })
       }
     }
 
@@ -123,53 +192,86 @@ export function ReceptionAlertListener({ enabled }: { enabled: boolean }) {
     }
   }, [enabled, router, dismiss])
 
-  if (!alert) return null
+  if (!enabled) return null
 
-  const href = alert.kind === 'request' ? '/hotel/requests?status=pending' : `/hotel/reception-desk/conversations/${alert.conversationId}`
+  const muteToggle = (
+    <button
+      type="button"
+      onClick={toggleMuted}
+      className="fixed bottom-5 right-5 z-50 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-md hover:bg-slate-50 hover:text-slate-700"
+      aria-label={muted ? 'Unmute alert sounds' : 'Mute alert sounds'}
+      title={muted ? 'Alert sounds muted' : 'Alert sounds on'}
+    >
+      {muted ? <BellOff className="h-4 w-4" aria-hidden /> : <Bell className="h-4 w-4" aria-hidden />}
+    </button>
+  )
+
+  if (!alert) return muteToggle
+
+  const href =
+    alert.kind === 'request'
+      ? '/hotel/requests?status=pending'
+      : alert.kind === 'message'
+        ? `/hotel/reception-desk/conversations/${alert.conversationId}`
+        : `/hotel/requests${alert.roomNumber ? `?q=${encodeURIComponent(alert.roomNumber)}` : ''}`
+
+  const icon =
+    alert.kind === 'request' ? (
+      <ClipboardList className="h-4.5 w-4.5 text-green-700" aria-hidden />
+    ) : alert.kind === 'message' ? (
+      <MessageSquareText className="h-4.5 w-4.5 text-blue-700" aria-hidden />
+    ) : (
+      <UserCheck className="h-4.5 w-4.5 text-amber-700" aria-hidden />
+    )
+
+  const iconBg = alert.kind === 'request' ? 'bg-green-100' : alert.kind === 'message' ? 'bg-blue-100' : 'bg-amber-100'
+
+  const title = alert.kind === 'request' ? 'New request' : alert.kind === 'message' ? 'New message' : alert.staffName ?? 'Staff update'
+
+  const subtitle =
+    alert.kind === 'request'
+      ? `${alert.requestType ?? 'Request'}${alert.roomNumber ? ` — Room ${alert.roomNumber}` : ''}`
+      : alert.kind === 'message'
+        ? `From guest${alert.roomNumber ? ` — Room ${alert.roomNumber}` : ''}`
+        : `${alert.label}: ${alert.requestType ?? 'Request'}${alert.roomNumber ? ` — Room ${alert.roomNumber}` : ''}`
 
   return (
-    <div className="fixed right-4 top-4 z-50 w-full max-w-sm">
-      <button
-        type="button"
-        onClick={() => {
-          dismiss()
-          router.push(href)
-        }}
-        className="flex w-full items-start gap-3 rounded-lg border border-slate-200 bg-white p-4 text-left shadow-lg ring-1 ring-black/5 hover:bg-slate-50"
-      >
-        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${alert.kind === 'request' ? 'bg-green-100' : 'bg-blue-100'}`}>
-          {alert.kind === 'request' ? (
-            <ClipboardList className="h-4.5 w-4.5 text-green-700" aria-hidden />
-          ) : (
-            <MessageSquareText className="h-4.5 w-4.5 text-blue-700" aria-hidden />
-          )}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-slate-900">{alert.kind === 'request' ? 'New request' : 'New message'}</span>
-          <span className="mt-0.5 block truncate text-sm text-slate-600">
-            {alert.kind === 'request' ? alert.requestType ?? 'Request' : 'From guest'}
-            {alert.roomNumber ? ` — Room ${alert.roomNumber}` : ''}
-          </span>
-        </span>
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={(e) => {
-            e.stopPropagation()
+    <>
+      {muteToggle}
+      <div className="fixed right-4 top-4 z-50 w-full max-w-sm">
+        <button
+          type="button"
+          onClick={() => {
             dismiss()
+            router.push(href)
           }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+          className="flex w-full items-start gap-3 rounded-lg border border-slate-200 bg-white p-4 text-left shadow-lg ring-1 ring-black/5 hover:bg-slate-50"
+        >
+          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${iconBg}`}>{icon}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-slate-900">{title}</span>
+            <span className="mt-0.5 block truncate text-sm text-slate-600">{subtitle}</span>
+          </span>
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
               e.stopPropagation()
               dismiss()
-            }
-          }}
-          className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-          aria-label="Dismiss"
-        >
-          <X className="h-4 w-4" aria-hidden />
-        </span>
-      </button>
-    </div>
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation()
+                dismiss()
+              }
+            }}
+            className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            aria-label="Dismiss"
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </span>
+        </button>
+      </div>
+    </>
   )
 }

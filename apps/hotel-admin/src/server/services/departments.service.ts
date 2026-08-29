@@ -44,7 +44,7 @@ export async function getManagerTeam(hotelId: string, departmentIds: string[]) {
         where: { department_id: { in: departmentIds } },
         select: { departments: { select: { department_id: true, name: true } } },
       },
-      requests: { where: { status: { in: ['assigned', 'in_progress'] } }, select: { request_id: true } },
+      requests: { where: { status: { in: ['pending_acceptance', 'assigned', 'in_progress'] } }, select: { request_id: true } },
     },
     orderBy: { full_name: 'asc' },
   })

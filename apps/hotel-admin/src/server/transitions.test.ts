@@ -32,4 +32,15 @@ describe('request status transitions (PRD §17)', () => {
   it('does not allow escalating an already-completed request', () => {
     expect(canTransition(REQUEST_TRANSITIONS, 'completed', 'escalated')).toBe(false)
   })
+
+  it('blocks starting or completing a request still awaiting the assignee\'s response', () => {
+    // pending_acceptance -> assigned/pending is handled via acceptAssignment/rejectAssignment,
+    // not this generic transition map — so this route must reject everything except cancelling.
+    expect(canTransition(REQUEST_TRANSITIONS, 'pending_acceptance', 'in_progress')).toBe(false)
+    expect(canTransition(REQUEST_TRANSITIONS, 'pending_acceptance', 'assigned')).toBe(false)
+  })
+
+  it('still allows reception to cancel a request stuck awaiting acceptance', () => {
+    expect(canTransition(REQUEST_TRANSITIONS, 'pending_acceptance', 'cancelled')).toBe(true)
+  })
 })

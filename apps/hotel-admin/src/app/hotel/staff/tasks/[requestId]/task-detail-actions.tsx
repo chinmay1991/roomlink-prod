@@ -23,6 +23,8 @@ export function TaskDetailActions({
   const [completeNote, setCompleteNote] = useState('')
   const [noteText, setNoteText] = useState('')
   const [savingNote, setSavingNote] = useState(false)
+  const [showReject, setShowReject] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
 
   async function post(path: string, body?: object) {
     setBusy(true)
@@ -58,6 +60,45 @@ export function TaskDetailActions({
         <Button className="w-full" disabled={busy} onClick={() => post('/accept')}>
           {busy ? 'Accepting…' : 'Accept Task'}
         </Button>
+      )}
+
+      {isMine && status === 'pending_acceptance' && !showReject && (
+        <div className="flex gap-2">
+          <Button variant="secondary" className="flex-1" disabled={busy} onClick={() => setShowReject(true)}>
+            Reject
+          </Button>
+          <Button className="flex-1" disabled={busy} onClick={() => post('/assignment/accept')}>
+            {busy ? 'Accepting…' : 'Accept'}
+          </Button>
+        </div>
+      )}
+
+      {isMine && status === 'pending_acceptance' && showReject && (
+        <div className="space-y-2 rounded-lg border border-slate-200 p-3">
+          <p className="text-xs text-slate-500">This sends the request back to reception, unassigned.</p>
+          <Textarea
+            rows={2}
+            placeholder="Why can't you take this on? (optional)"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <Button variant="secondary" className="flex-1" onClick={() => setShowReject(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              className="flex-1"
+              disabled={busy}
+              onClick={async () => {
+                const ok = await post('/assignment/reject', { reason: rejectReason.trim() || undefined })
+                if (ok) setShowReject(false)
+              }}
+            >
+              Reject
+            </Button>
+          </div>
+        </div>
       )}
 
       {isMine && status === 'assigned' && (

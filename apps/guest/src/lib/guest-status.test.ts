@@ -14,6 +14,10 @@ describe('toGuestRequestStatus (Guest PRD §13/§37 — hide internal-only state
     expect(toGuestRequestStatus('escalated')).toBe('in_progress')
   })
 
+  it('maps the internal-only "pending_acceptance" status onto "assigned"', () => {
+    expect(toGuestRequestStatus('pending_acceptance')).toBe('assigned')
+  })
+
   it('every mapped status has a guest-facing label', () => {
     for (const status of ['pending', 'assigned', 'in_progress', 'completed', 'cancelled']) {
       expect(GUEST_REQUEST_STATUS_LABEL[toGuestRequestStatus(status)]).toBeTruthy()

@@ -24,7 +24,7 @@ export async function getDashboardData(hotelId: string) {
     prisma.$queryRaw<DashboardKpiRow[]>`
       SELECT
         (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND created_at >= ${startOfDay})::int AS todays_requests,
-        (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND status IN ('pending', 'assigned'))::int AS pending,
+        (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND status IN ('pending', 'pending_acceptance', 'assigned'))::int AS pending,
         (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND status = 'in_progress')::int AS in_progress,
         (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND status = 'completed' AND completed_at >= ${startOfDay})::int AS completed,
         (SELECT COUNT(*) FROM rooms WHERE hotel_id = ${hotelId}::uuid AND status = 'active')::int AS active_rooms,
@@ -44,7 +44,7 @@ export async function getDashboardData(hotelId: string) {
   const departmentSummary = departments.map((d) => ({
     departmentId: d.department_id,
     name: d.name,
-    pending: d.requests.filter((r) => r.status === 'pending' || r.status === 'assigned').length,
+    pending: d.requests.filter((r) => r.status === 'pending' || r.status === 'pending_acceptance' || r.status === 'assigned').length,
     inProgress: d.requests.filter((r) => r.status === 'in_progress').length,
     completed: d.requests.filter((r) => r.status === 'completed').length,
   }))

@@ -28,6 +28,7 @@ const STATUS_TONE: Record<string, Tone> = {
   complete: 'green',
   completed: 'green',
   open: 'blue',
+  pending_acceptance: 'amber',
   assigned: 'blue',
   escalated: 'red',
   waiting_for_hotel: 'amber',

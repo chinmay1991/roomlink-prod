@@ -727,6 +727,7 @@ enum request_priority {
 
 enum request_status {
   pending
+  pending_acceptance
   assigned
   in_progress
   completed

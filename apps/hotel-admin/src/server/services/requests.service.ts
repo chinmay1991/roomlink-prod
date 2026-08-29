@@ -148,13 +148,13 @@ export async function getManagerQueueKpis(hotelId: string, departmentIds: string
       SELECT
         (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND department_id = ANY(${departmentIds}::uuid[]) AND created_at >= ${startOfDay})::int AS new_today,
         (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND department_id = ANY(${departmentIds}::uuid[]) AND status = 'pending')::int AS unassigned,
-        (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND department_id = ANY(${departmentIds}::uuid[]) AND status = 'assigned')::int AS assigned,
+        (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND department_id = ANY(${departmentIds}::uuid[]) AND status IN ('assigned', 'pending_acceptance'))::int AS assigned,
         (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND department_id = ANY(${departmentIds}::uuid[]) AND status = 'in_progress')::int AS in_progress,
         (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND department_id = ANY(${departmentIds}::uuid[]) AND status = 'completed' AND completed_at >= ${startOfDay})::int AS completed_today,
         (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND department_id = ANY(${departmentIds}::uuid[]) AND status = 'escalated')::int AS escalated
     `,
     prisma.requests.findMany({
-      where: { hotel_id: hotelId, department_id: { in: departmentIds }, status: { in: ['pending', 'assigned', 'in_progress'] } },
+      where: { hotel_id: hotelId, department_id: { in: departmentIds }, status: { in: ['pending', 'pending_acceptance', 'assigned', 'in_progress'] } },
       select: { priority: true, created_at: true },
     }),
   ])
@@ -175,7 +175,7 @@ export async function getManagerQueueKpis(hotelId: string, departmentIds: string
 /** The manager's live work list (PRD §3) — everything still open across their department(s). */
 export async function getManagerQueueRequests(hotelId: string, departmentIds: string[]) {
   return prisma.requests.findMany({
-    where: { hotel_id: hotelId, department_id: { in: departmentIds }, status: { in: ['pending', 'assigned', 'in_progress', 'escalated'] } },
+    where: { hotel_id: hotelId, department_id: { in: departmentIds }, status: { in: ['pending', 'pending_acceptance', 'assigned', 'in_progress', 'escalated'] } },
     orderBy: [{ created_at: 'asc' }],
     include: REQUEST_INCLUDE,
   })
@@ -195,7 +195,7 @@ export async function getStaffTaskSummary(hotelId: string, userId: string, depar
   const [row] = await prisma.$queryRaw<StaffTaskSummaryRow[]>`
     SELECT
       (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND department_id = ANY(${departmentIds}::uuid[]) AND status = 'pending')::int AS new_available,
-      (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND assigned_to = ${userId}::uuid AND status IN ('assigned', 'in_progress'))::int AS my_active,
+      (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND assigned_to = ${userId}::uuid AND status IN ('pending_acceptance', 'assigned', 'in_progress'))::int AS my_active,
       (SELECT COUNT(*) FROM requests WHERE hotel_id = ${hotelId}::uuid AND assigned_to = ${userId}::uuid AND status = 'completed' AND completed_at >= ${startOfDay})::int AS completed_today
   `
 
@@ -250,9 +250,13 @@ export async function createRequest(hotelId: string, input: CreateRequestInput, 
 
 /**
  * Assign or reassign — used for both the initial Reception -> Manager/Staff
- * hop and any later reassignment (PRD §19 routing). Sets status to
- * `assigned` only when moving out of `pending`; a reassignment mid-flight
- * keeps the current status.
+ * hop and any later reassignment (PRD §19 routing). The initial hop (moving
+ * out of `pending`) sets status to `pending_acceptance`, not `assigned`
+ * directly — the assignee must accept or reject it (see `acceptAssignment`/
+ * `rejectAssignment`) before it can be started. A reassignment mid-flight
+ * (the request is already `assigned`/`in_progress`/`escalated`) keeps the
+ * current status as before — only the brand-new hand-off is gated, so
+ * reassigning work already underway doesn't lose that progress.
  */
 export async function assignRequest(hotelId: string, requestId: string, assigneeId: string, actor: HotelSessionUser) {
   const request = await prisma.requests.findFirstOrThrow({
@@ -273,7 +277,7 @@ export async function assignRequest(hotelId: string, requestId: string, assignee
     if (!eligible) throw new ForbiddenError('That person is not eligible for this department')
   }
 
-  const nextStatus: request_status = request.status === 'pending' ? 'assigned' : request.status
+  const nextStatus: request_status = request.status === 'pending' ? 'pending_acceptance' : request.status
 
   const after = await prisma.$transaction(async (tx) => {
     const updated = await tx.requests.update({
@@ -375,6 +379,90 @@ export async function acceptRequest(hotelId: string, requestId: string, actor: H
   return prisma.requests.findUniqueOrThrow({ where: { request_id: requestId }, include: REQUEST_INCLUDE })
 }
 
+/**
+ * The other half of the reception-directed hand-off `assignRequest` starts:
+ * the assignee confirming they'll take it on. Distinct from `acceptRequest`
+ * (that one is a staff member *choosing* an unclaimed request themselves,
+ * which needs no separate confirmation step) — this is responding to work
+ * someone else routed to them.
+ */
+export async function acceptAssignment(hotelId: string, requestId: string, actor: HotelSessionUser) {
+  const request = await prisma.requests.findFirstOrThrow({ where: { request_id: requestId, hotel_id: hotelId } })
+
+  if (request.assigned_to !== actor.id) throw new ForbiddenError('This assignment is not yours to accept')
+  if (request.status !== 'pending_acceptance') {
+    throw new InvalidTransitionError('This request is no longer waiting on your response')
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.requests.update({ where: { request_id: requestId }, data: { status: 'assigned' } })
+    await tx.request_status_history.create({
+      data: { request_id: requestId, from_status: 'pending_acceptance', to_status: 'assigned', changed_by: actor.id },
+    })
+  })
+
+  await recordAudit({
+    actorId: actor.id,
+    actorType: actor.userType,
+    action: 'request.assignment_accepted',
+    entityType: 'request',
+    entityId: requestId,
+    beforeState: { status: 'pending_acceptance' },
+    afterState: { status: 'assigned' },
+  })
+
+  return prisma.requests.findUniqueOrThrow({ where: { request_id: requestId }, include: REQUEST_INCLUDE })
+}
+
+/**
+ * Declining a hand-off — sends the request back to `pending`, unassigned,
+ * so reception/the manager can route it to someone else, rather than
+ * leaving it stuck against a person who won't work it. `reason` is
+ * optional (see rejectAssignmentSchema) so this stays a quick action.
+ */
+export async function rejectAssignment(hotelId: string, requestId: string, reason: string | undefined, actor: HotelSessionUser) {
+  const request = await prisma.requests.findFirstOrThrow({ where: { request_id: requestId, hotel_id: hotelId } })
+
+  if (request.assigned_to !== actor.id) throw new ForbiddenError('This assignment is not yours to reject')
+  if (request.status !== 'pending_acceptance') {
+    throw new InvalidTransitionError('This request is no longer waiting on your response')
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.requests.update({ where: { request_id: requestId }, data: { status: 'pending', assigned_to: null } })
+    await tx.request_status_history.create({
+      data: {
+        request_id: requestId,
+        from_status: 'pending_acceptance',
+        to_status: 'pending',
+        changed_by: actor.id,
+        note: reason || null,
+      },
+    })
+  })
+
+  await recordAudit({
+    actorId: actor.id,
+    actorType: actor.userType,
+    action: 'request.assignment_rejected',
+    entityType: 'request',
+    entityId: requestId,
+    beforeState: { status: 'pending_acceptance', assigned_to: actor.id },
+    afterState: { status: 'pending', assigned_to: null },
+  })
+
+  return prisma.requests.findUniqueOrThrow({ where: { request_id: requestId }, include: REQUEST_INCLUDE })
+}
+
+/** Backs the staff-side assignment popup (layout-level, mirrors ReceptionAlertListener's polling signal) — every request handed to this person that they haven't responded to yet, oldest first so the popup queue drains in the order things arrived. */
+export async function getMyPendingAssignments(hotelId: string, actor: HotelSessionUser) {
+  return prisma.requests.findMany({
+    where: { hotel_id: hotelId, assigned_to: actor.id, status: 'pending_acceptance' },
+    orderBy: { created_at: 'asc' },
+    include: REQUEST_INCLUDE,
+  })
+}
+
 export async function updateRequestStatus(
   hotelId: string,
   requestId: string,
@@ -384,6 +472,9 @@ export async function updateRequestStatus(
   const request = await prisma.requests.findFirstOrThrow({ where: { request_id: requestId, hotel_id: hotelId } })
   await assertCanWorkRequest(hotelId, request, actor)
 
+  if (request.status === 'pending_acceptance' && input.status !== 'cancelled') {
+    throw new ForbiddenError('Accept or reject this assignment before changing its status')
+  }
   if (!canTransition(REQUEST_TRANSITIONS, request.status, input.status)) {
     throw new ForbiddenError(`Cannot move a ${request.status} request to ${input.status}`)
   }

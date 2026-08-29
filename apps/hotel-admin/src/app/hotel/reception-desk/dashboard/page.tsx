@@ -25,7 +25,7 @@ import { StatTile } from './stat-tile'
 import { RoomOverviewGrid } from './room-overview-grid'
 import type { HotelSessionUser } from '@/server/require-hotel-session'
 
-const OPEN_STATUSES = ['pending', 'assigned', 'in_progress', 'escalated'] as const
+const OPEN_STATUSES = ['pending', 'pending_acceptance', 'assigned', 'in_progress', 'escalated'] as const
 
 const PRIORITY_BORDER: Record<string, string> = {
   urgent: 'border-l-red-500',
