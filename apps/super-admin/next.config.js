@@ -31,6 +31,15 @@ const withPWA = require('next-pwa')({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Baked in at build time (not read from process.env at request time) so
+  // every deployment shows the version it was actually built from,
+  // regardless of which user is looking at it. VERCEL_GIT_COMMIT_SHA is a
+  // Vercel system env var, present automatically in that build environment
+  // — no project configuration needed — and empty in local dev.
+  env: {
+    NEXT_PUBLIC_APP_VERSION: require('./package.json').version,
+    NEXT_PUBLIC_GIT_SHA: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7),
+  },
   // apps/super-admin imports @roomlink/db and @roomlink/ui from outside its
   // own directory (npm workspace packages) — Next.js must be told to
   // transpile them rather than treat them as pre-built.

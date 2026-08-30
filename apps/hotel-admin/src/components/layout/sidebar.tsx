@@ -187,6 +187,12 @@ export function Sidebar() {
             ))
           : items.map(navLink)}
       </nav>
+
+      {/* Outside the role-based nav branches above on purpose — this always renders, for every role. */}
+      <div className="border-t border-slate-100 px-5 py-3 text-xs text-slate-400">
+        v{process.env.NEXT_PUBLIC_APP_VERSION}
+        {process.env.NEXT_PUBLIC_GIT_SHA ? ` · ${process.env.NEXT_PUBLIC_GIT_SHA}` : ''}
+      </div>
     </aside>
   )
 }

@@ -60,6 +60,12 @@ export function Sidebar() {
           )
         })}
       </nav>
+
+      {/* Outside the role/nav-item logic above on purpose — this always renders, for every signed-in user. */}
+      <div className="border-t border-slate-100 px-5 py-3 text-xs text-slate-400">
+        v{process.env.NEXT_PUBLIC_APP_VERSION}
+        {process.env.NEXT_PUBLIC_GIT_SHA ? ` · ${process.env.NEXT_PUBLIC_GIT_SHA}` : ''}
+      </div>
     </aside>
   )
 }
