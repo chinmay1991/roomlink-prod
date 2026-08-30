@@ -58,6 +58,8 @@ export async function createHotel(input: CreateHotelInput, actorId: string): Pro
         pincode: input.pincode || null,
         contact_person: input.contactPerson || null,
         phone: input.phone || null,
+        reception_contact: input.receptionContact,
+        room_service_contact: input.roomServiceContact,
         email: input.email || null,
         time_zone: input.timeZone,
         check_in_time: timeToDate(input.checkInTime),

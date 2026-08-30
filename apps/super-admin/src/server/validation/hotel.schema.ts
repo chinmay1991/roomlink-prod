@@ -36,6 +36,8 @@ export const createHotelSchema = z.object({
   pincode: z.string().trim().max(20).optional().or(z.literal('')),
   contactPerson: z.string().trim().max(150).optional().or(z.literal('')),
   phone: z.string().trim().max(20).optional().or(z.literal('')),
+  receptionContact: z.string().trim().min(1, 'Reception contact number is required').max(20),
+  roomServiceContact: z.string().trim().min(1, 'Room service contact number is required').max(20),
   email: z.string().trim().email().optional().or(z.literal('')),
 
   // Step 3: Subscription Plan
@@ -52,7 +54,18 @@ export type CreateHotelInput = z.infer<typeof createHotelSchema>
 
 export const createHotelStepFields: Record<1 | 2 | 3 | 4, (keyof CreateHotelInput)[]> = {
   1: ['name', 'hotelCode', 'brand', 'timeZone', 'checkInTime', 'checkOutTime'],
-  2: ['addressLine', 'city', 'state', 'country', 'pincode', 'contactPerson', 'phone', 'email'],
+  2: [
+    'addressLine',
+    'city',
+    'state',
+    'country',
+    'pincode',
+    'contactPerson',
+    'phone',
+    'receptionContact',
+    'roomServiceContact',
+    'email',
+  ],
   3: ['planId', 'trialDays'],
   4: ['adminFullName', 'adminEmail', 'adminPhone'],
 }

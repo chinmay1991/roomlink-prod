@@ -28,6 +28,8 @@ export default async function HotelOverviewPage({ params }: { params: { hotelId:
             <Field label="Address" value={address || '—'} />
             <Field label="Contact person" value={hotel.contact_person ?? '—'} />
             <Field label="Phone" value={hotel.phone ?? '—'} />
+            <Field label="Reception Contact" value={hotel.reception_contact ?? '—'} />
+            <Field label="Room Service Contact" value={hotel.room_service_contact ?? '—'} />
             <Field label="Email" value={hotel.email ?? '—'} />
             <Field label="Time zone" value={hotel.time_zone} />
             <Field

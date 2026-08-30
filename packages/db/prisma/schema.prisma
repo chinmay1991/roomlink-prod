@@ -175,6 +175,8 @@ model hotels {
   pincode                                     String?                  @db.VarChar(20)
   contact_person                              String?                  @db.VarChar(150)
   phone                                       String?                  @db.VarChar(20)
+  reception_contact                           String?                  @db.VarChar(20)
+  room_service_contact                        String?                  @db.VarChar(20)
   email                                       String?                  @db.VarChar(150)
   logo_url                                    String?                  @db.VarChar(500)
   time_zone                                   String                   @default("Asia/Kolkata") @db.VarChar(60)

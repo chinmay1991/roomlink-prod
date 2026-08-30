@@ -101,6 +101,22 @@ export function ProfileForm({ initial }: { initial: UpdateHotelProfileInput }) {
           <FormField label="Phone" htmlFor="phone" error={errors.phone?.message}>
             <Input id="phone" {...register('phone')} />
           </FormField>
+          <FormField
+            label="Reception Contact Number"
+            htmlFor="receptionContact"
+            required
+            error={errors.receptionContact?.message}
+          >
+            <Input id="receptionContact" {...register('receptionContact')} />
+          </FormField>
+          <FormField
+            label="Room Service Contact Number"
+            htmlFor="roomServiceContact"
+            required
+            error={errors.roomServiceContact?.message}
+          >
+            <Input id="roomServiceContact" {...register('roomServiceContact')} />
+          </FormField>
           <FormField label="Email" htmlFor="email" error={errors.email?.message}>
             <Input id="email" type="email" {...register('email')} />
           </FormField>

@@ -50,6 +50,8 @@ export async function updateHotelProfile(hotelId: string, input: UpdateHotelProf
       pincode: input.pincode || null,
       country: input.country,
       phone: input.phone || null,
+      reception_contact: input.receptionContact,
+      room_service_contact: input.roomServiceContact,
       email: input.email || null,
       website: input.website || null,
       time_zone: input.timeZone,

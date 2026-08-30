@@ -13,6 +13,8 @@ export const updateHotelProfileSchema = z.object({
   pincode: optionalStr(20),
   country: z.string().trim().min(1).max(100),
   phone: optionalStr(20),
+  receptionContact: z.string().trim().min(1, 'Reception contact number is required').max(20),
+  roomServiceContact: z.string().trim().min(1, 'Room service contact number is required').max(20),
   email: z.string().trim().email().optional().or(z.literal('')),
   website: optionalStr(255),
   timeZone: z.string().trim().min(1),

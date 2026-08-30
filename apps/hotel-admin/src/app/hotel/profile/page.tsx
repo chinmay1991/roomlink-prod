@@ -22,6 +22,8 @@ export default async function ProfilePage() {
           pincode: hotel.pincode ?? '',
           country: hotel.country ?? 'India',
           phone: hotel.phone ?? '',
+          receptionContact: hotel.reception_contact ?? '',
+          roomServiceContact: hotel.room_service_contact ?? '',
           email: hotel.email ?? '',
           website: hotel.website ?? '',
           timeZone: hotel.time_zone,

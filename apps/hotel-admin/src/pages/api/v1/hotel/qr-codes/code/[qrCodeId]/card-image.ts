@@ -66,6 +66,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       hotelName: hotel.name,
       roomNumber: qr.rooms.room_number,
       qrPayload: payload,
+      receptionContact: hotel.reception_contact,
+      roomServiceContact: hotel.room_service_contact,
     })
 
     const download = req.query.download === 'true'
